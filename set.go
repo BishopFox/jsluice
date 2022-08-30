@@ -1,4 +1,4 @@
-package jsurls
+package jsluice
 
 type set map[string]any
 

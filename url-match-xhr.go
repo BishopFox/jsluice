@@ -1,4 +1,4 @@
-package jsurls
+package jsluice
 
 import (
 	"strings"
@@ -32,10 +32,10 @@ func (c *nodeCache) get(k *sitter.Node) ([]*sitter.Node, bool) {
 	return v, exists
 }
 
-func matchXHR() urlMatcher {
+func matchXHR() URLMatcher {
 	cache := newNodeCache()
 
-	return urlMatcher{"call_expression", func(n *sitter.Node, source []byte) *URL {
+	return URLMatcher{"call_expression", func(n *sitter.Node, source []byte) *URL {
 		callName := content(n.ChildByFieldName("function"), source)
 
 		// We don't know what the XMLHttpRequest object will be called,

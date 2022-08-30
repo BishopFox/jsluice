@@ -1,4 +1,4 @@
-package jsurls
+package jsluice
 
 import (
 	"strings"
@@ -7,9 +7,9 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func matchJQuery() urlMatcher {
+func matchJQuery() URLMatcher {
 
-	return urlMatcher{"call_expression", func(n *sitter.Node, source []byte) *URL {
+	return URLMatcher{"call_expression", func(n *sitter.Node, source []byte) *URL {
 		callName := content(n.ChildByFieldName("function"), source)
 
 		if !slices.Contains(

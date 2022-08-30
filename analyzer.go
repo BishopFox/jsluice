@@ -1,4 +1,4 @@
-package jsurls
+package jsluice
 
 import (
 	sitter "github.com/smacker/go-tree-sitter"
