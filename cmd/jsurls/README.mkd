@@ -4,7 +4,7 @@ Extract URLs and their parameters from JavaScript files. Uses [go-tree-sitter](h
 
 ## Install
 
-Run `go install` in this directory, or `go install github.com/bishopfoxmss/jsurls/cmd/jsurls@latest`
+Run `go install` in this directory, or `go install github.com/bishopfoxmss/jsluice/cmd/jsurls@latest`
 
 If you want the `go install github.com/bish...` command to work, you'll need to make sure you have configured git and Go
 to behave properly. In your `~/.gitconfig` you need this to make sure clones are done with SSH:

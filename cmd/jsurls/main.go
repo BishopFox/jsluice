@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bishopfoxmss/jsurls"
+	"github.com/bishopfoxmss/jsluice"
 	"github.com/pkg/profile"
 	flag "github.com/spf13/pflag"
 )
@@ -65,13 +65,12 @@ func main() {
 
 	wg := sync.WaitGroup{}
 	jobs := make(chan string)
-	matches := make(chan *jsurls.Match)
+	matches := make(chan *jsluice.URL)
 
 	for i := 0; i < concurrency; i++ {
 
 		wg.Add(1)
 		go func() {
-			extractor := jsurls.NewExtractor()
 
 			for filename := range jobs {
 
@@ -84,11 +83,12 @@ func main() {
 				// print just the tree and stop
 				if treeMode {
 					fmt.Printf("%s:\n", filename)
-					jsurls.PrintTree(source)
+					jsluice.PrintTree(source)
 					continue
 				}
 
-				for _, m := range extractor.GetMatches(source) {
+				analzyer := jsluice.NewAnalyzer(source)
+				for _, m := range analzyer.GetURLs() {
 					m.Filename = filename
 					matches <- m
 				}
