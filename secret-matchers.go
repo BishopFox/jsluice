@@ -102,7 +102,7 @@ func AllSecretMatchers() []SecretMatcher {
 				if strings.Contains(k, "secret") {
 					// TODO: check format of value
 					// TODO: think of a way to handle multiple secrets in the same object?
-					data["secret"] = o.getStringI(k, "")
+					data["secret"] = DecodeString(o.getStringI(k, ""))
 					break
 				}
 			}
