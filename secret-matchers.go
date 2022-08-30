@@ -146,7 +146,6 @@ func AllSecretMatchers() []SecretMatcher {
 				"apiKey":        true,
 				"appId":         true,
 				"authDomain":    true,
-				"databaseURL":   true,
 				"projectId":     true,
 				"storageBucket": true,
 			}
