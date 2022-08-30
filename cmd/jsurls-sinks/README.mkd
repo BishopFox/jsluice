@@ -1,0 +1,6 @@
+# jsurls-sinks
+
+Development tool for finding places in JavaScript files that use URLs.
+
+The idea is you can run this against a whole bunch of JS files and it will spit out places that
+might be good to add to the main `jsurls` matchers.

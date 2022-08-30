@@ -1,0 +1,8 @@
+# jsluice
+
+A Go package and tool for extracting URLs, secrets, and other interesting data from JavaScript files.
+Uses [go-tree-sitter](https://github.com/smacker/go-tree-sitter) for parsing.
+
+
+
+

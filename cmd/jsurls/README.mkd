@@ -1,0 +1,77 @@
+# jsurls
+
+Extract URLs and their parameters from JavaScript files. Uses [go-tree-sitter](https://github.com/smacker/go-tree-sitter) for parsing.
+
+## Install
+
+Run `go install` in this directory, or `go install github.com/bishopfoxmss/jsurls/cmd/jsurls@latest`
+
+If you want the `go install github.com/bish...` command to work, you'll need to make sure you have configured git and Go
+to behave properly. In your `~/.gitconfig` you need this to make sure clones are done with SSH:
+
+```
+[url "git@github.com:"]
+    insteadOf = https://github.com/
+```
+
+You also need to tell Go not to use their public proxy for packages under `github.com/bishopfoxmss/`.
+Run this, and/or put this in your `~/.bashrc` or equivalent:
+
+```
+go env -w GOPRIVATE='github.com/bishopfoxmss/*'
+```
+
+## Usage
+
+Regular usage is with `jsurls <filename>`. The output is a JSON stream, so you'll probably
+want to pipe to `jq` for formatting in most cases:
+
+```
+▶ jsurls testdata/jquery-post.js | jq
+{
+  "url": "demo_test_post.asp",
+  "params": [
+    "name",
+    "city"
+  ],
+  "method": "POST",
+  "type": "$.post"
+}
+{
+  "url": "/logout.php",
+  "params": [
+    "redirect"
+  ],
+  "method": "GET",
+  "type": "$.get"
+}
+```
+
+You can print the tree for a JS file with the `--tree`/`-t` flag. This is a useful reference when writing matchers:
+
+```
+▶ jsurls testdata/hello.js --tree
+program
+  expression_statement
+    call_expression
+      function: member_expression
+        object: identifier (console)
+        property: property_identifier (log)
+      arguments: arguments
+        string ("Hello, world!")
+```
+
+You can see the source code for each match with the `--include-source`/`-i` flag: 
+
+```
+▶ jsurls testdata/jquery-post.js --include-source | head -n1 | jq .source -r
+$.post("demo_test_post.asp",
+  {
+    name: "Donald Duck",
+    city: "Duckburg"
+  },
+  function(data, status){
+    alert("Data: " + data + "\nStatus: " + status);
+	document.location = data.nextURL
+  })
+```
