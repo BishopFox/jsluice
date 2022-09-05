@@ -152,10 +152,10 @@ func PrintTree(source []byte) {
 	tree := parser.Parse(nil, source)
 	root := tree.RootNode()
 
-	PrettyPrint(root, source)
+	prettyPrint(root, source)
 }
 
-func PrettyPrint(n *sitter.Node, source []byte) {
+func prettyPrint(n *sitter.Node, source []byte) {
 
 	c := sitter.NewTreeCursor(n)
 	defer c.Close()

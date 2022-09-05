@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 )
 
+// An item represents a token in a JavaScript string
 type item struct {
 	typ itemType
 	val string
@@ -58,12 +59,13 @@ func (i item) String() string {
 	}
 }
 
+// a stringLexer maintains the state needed to lex a string
 type stringLexer struct {
-	str   string
-	start int
-	pos   int
-	items []item
-	done  bool
+	str   string // The input string
+	start int    // The start position (in bytes) of the current token being lexed
+	pos   int    // The current position (in bytes) of the rune being looked at
+	items []item // A slice of tokens that have been emitted
+	done  bool   // Flag that's set when we've consumed all of the input
 }
 
 func newStringLexer(in string) *stringLexer {
@@ -76,6 +78,11 @@ func newStringLexer(in string) *stringLexer {
 	}
 }
 
+// Next returns the next rune in the input string, moving the
+// position pointer on by the size of the rune that was decoded.
+// For ASCII text this wouldn't be required, but in JavaScript
+// source we will encounter many runes that have a length of more
+// than one byte
 func (s *stringLexer) Next() rune {
 	if s.pos >= len(s.str) {
 		s.done = true
@@ -87,6 +94,8 @@ func (s *stringLexer) Next() rune {
 	return r
 }
 
+// Backup moves the position pointer back by the length of the
+// previous rune in the input string.
 func (s *stringLexer) Backup() {
 	if s.done || s.pos <= 0 {
 		return
@@ -95,12 +104,17 @@ func (s *stringLexer) Backup() {
 	s.pos -= l
 }
 
+// Peek returns the next rune in the input string without advancing
+// the position pointer
 func (s *stringLexer) Peek() rune {
 	r := s.Next()
 	s.Backup()
 	return r
 }
 
+// Emit adds a token of the provided type to the stringLexer's
+// internal list of tokens. The start pointer is advanced to the
+// current position.
 func (s *stringLexer) Emit(t itemType) {
 	s.items = append(s.items, item{
 		typ: t,
@@ -109,10 +123,15 @@ func (s *stringLexer) Emit(t itemType) {
 	s.start = s.pos
 }
 
+// Ignore moves the start position pointer to the current
+// position without emitting a token; effectively ignoring
+// the chunk of text between the last token we emitted and now.
 func (s *stringLexer) Ignore() {
 	s.start = s.pos
 }
 
+// Accept advances the position pointer only if the next rune
+// is in the set of valid runes provided
 func (s *stringLexer) Accept(valid string) bool {
 	if strings.ContainsRune(valid, s.Next()) {
 		return true
@@ -121,6 +140,8 @@ func (s *stringLexer) Accept(valid string) bool {
 	return false
 }
 
+// AcceptN advances the position pointer N times, only if
+// the next N runes are in the set of valid runes provided
 func (s *stringLexer) AcceptN(valid string, n int) bool {
 	count := 0
 	for i := 0; i < n; i++ {
@@ -131,18 +152,25 @@ func (s *stringLexer) AcceptN(valid string, n int) bool {
 	return count == n
 }
 
+// AcceptUntil accepts any runes until the rune provided is
+// encountered
 func (s *stringLexer) AcceptUntil(r rune) {
 	for s.Next() != r && !s.done {
 	}
 	s.Backup()
 }
 
+// AcceptRun accepts runes until encountering a rune not
+// in the set of valid runes provided
 func (s *stringLexer) AcceptRun(valid string) {
 	for strings.ContainsRune(valid, s.Next()) {
 	}
 	s.Backup()
 }
 
+// String returns the unescaped representation of the input
+// that has been lexed so far. Usually it would only be
+// called after all the input has been processed.
 func (s *stringLexer) String() string {
 	out := &strings.Builder{}
 	for _, i := range s.items {
@@ -151,6 +179,14 @@ func (s *stringLexer) String() string {
 	return out.String()
 }
 
+// DecodeString accepts a raw string as it might be found in some
+// JavaScript source code (without surrounding quotes), and converts
+// any escape sequences. E.g.
+//   foo\x3dbar -> foo=bar // Hex escapes
+//   foo\u003Dbar -> foo=bar // Unicode escapes
+//   foo\u{003D}bar -> foo=bar // Braced unicode escapes
+//   foo\075bar -> foo=bar // Octal escape
+//   foo\"bar -> foo"bar // Single character escapes
 func DecodeString(in string) string {
 	in = dequote(in)
 	l := newStringLexer(in)

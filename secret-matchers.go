@@ -6,12 +6,17 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+// A Secret represents any bit of secret or otherwise interesting
+// data found within a JavaScript file. E.g. an AWS access key and
+// secret.
 type Secret struct {
 	Kind     string `json:"kind"`
 	Data     any    `json:"data"`
 	Filename string `json:"filename,omitempty"`
 }
 
+// GetSecrets uses the parse tree and a set of Matchers (those provided
+// by AllSecretMatchers()) to find secrets in JavaScript source code.
 func (a *Analyzer) GetSecrets() []*Secret {
 	out := make([]*Secret, 0)
 
@@ -43,11 +48,15 @@ func (a *Analyzer) GetSecrets() []*Secret {
 	return out
 }
 
+// A SecretMatcher is a tree-sitter query to find relevant nodes
+// in the parse tree, and a function to inspect those nodes,
+// returning any Secret that is found.
 type SecretMatcher struct {
 	Query string
 	Fn    func(*sitter.Node, []byte) *Secret
 }
 
+// AllSecretMatchers returns the default list of SecretMatchers
 func AllSecretMatchers() []SecretMatcher {
 	return []SecretMatcher{
 		// AWS Keys

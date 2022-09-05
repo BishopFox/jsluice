@@ -8,7 +8,7 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// a URL is any URL found in the source code with accompanying details
+// A URL is any URL found in the source code with accompanying details
 type URL struct {
 	URL         string            `json:"url"`
 	QueryParams []string          `json:"queryParams"`
@@ -117,13 +117,14 @@ func unique[T comparable](items []T) []T {
 	return out
 }
 
-// a URLMatcher has a type of thing it matches against (e.g. assignment_expression),
+// A URLMatcher has a type of thing it matches against (e.g. assignment_expression),
 // and a function to actually do the matching and producing of the *URL
 type URLMatcher struct {
 	Type string
 	Fn   func(*sitter.Node, []byte) *URL
 }
 
+// AllURLMatchers returns the detault list of URLMatchers
 func AllURLMatchers() []URLMatcher {
 
 	assignmentNames := newSet([]string{
