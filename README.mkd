@@ -4,5 +4,72 @@ A Go package and tool for extracting URLs, secrets, and other interesting data f
 Uses [go-tree-sitter](https://github.com/smacker/go-tree-sitter) for parsing.
 
 
+## Extracting URLs
 
+Rather than using regular expressions alone, `jsluice` uses `go-tree-sitter` to look for places that URLs are known to be used,
+such as being assigned to `document.location`, passed to `window.open()`, or passed to `fetch()` etc.
 
+A simple example program is provided [here](/bishopfoxmss/jsluice/blob/main/examples/basic/main.go):
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/bishopfoxmss/jsluice"
+)
+
+func main() {
+	analyzer := jsluice.NewAnalyzer([]byte(`
+		const login = (redirect) => {
+			document.location = "/login?redirect=" + redirect + "&method=oauth"
+		}
+	`))
+
+	for _, url := range analyzer.GetURLs() {
+		j, err := json.MarshalIndent(url, "", "  ")
+		if err != nil {
+			continue
+		}
+
+		fmt.Printf("%s\n", j)
+	}
+}
+```
+
+Running the example:
+```
+▶ go run examples/basic/main.go
+{
+  "url": "/login?redirect=EXPR\u0026method=oauth",
+  "queryParams": [
+    "method",
+    "redirect"
+  ],
+  "bodyParams": [],
+  "method": "GET",
+  "type": "locationAssignment",
+  "source": "document.location = \"/login?redirect=\" + redirect + \"\u0026method=oauth\""
+}
+```
+
+Note that the value of the `redirect` query string parameter is `EXPR`.
+Code like this is common in JavaScript:
+
+```javascript
+document.location = "/login?redirect=" + redirect + "&method=oauth"
+```
+
+`jsluice` understands string concatenation, and replaces any expressions it cannot know the value
+of with `EXPR`. Although not a foolproof solution, this approach results in a valid URL or path
+more often than not, and means that it's possible to discover things that aren't easily found using
+other approaches. In this case, a naive regular expression may well miss the `method` query string
+parameter:
+
+```
+▶ JS='document.location = "/login?redirect=" + redirect + "&method=oauth"'
+▶ echo $JS | grep -oE 'document\.location = "[^"]+"'
+document.location = "/login?redirect="
+```
