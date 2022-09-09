@@ -4,28 +4,27 @@ import (
 	"strings"
 	"sync"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"golang.org/x/exp/slices"
 )
 
 type nodeCache struct {
 	sync.RWMutex
-	data map[*sitter.Node][]*sitter.Node
+	data map[*Node][]*Node
 }
 
 func newNodeCache() *nodeCache {
 	return &nodeCache{
-		data: make(map[*sitter.Node][]*sitter.Node),
+		data: make(map[*Node][]*Node),
 	}
 }
 
-func (c *nodeCache) set(k *sitter.Node, v []*sitter.Node) {
+func (c *nodeCache) set(k *Node, v []*Node) {
 	c.Lock()
 	c.data[k] = v
 	c.Unlock()
 }
 
-func (c *nodeCache) get(k *sitter.Node) ([]*sitter.Node, bool) {
+func (c *nodeCache) get(k *Node) ([]*Node, bool) {
 	c.RLock()
 	v, exists := c.data[k]
 	c.RUnlock()
@@ -35,8 +34,8 @@ func (c *nodeCache) get(k *sitter.Node) ([]*sitter.Node, bool) {
 func matchXHR() URLMatcher {
 	cache := newNodeCache()
 
-	return URLMatcher{"call_expression", func(n *sitter.Node, source []byte) *URL {
-		callName := content(n.ChildByFieldName("function"), source)
+	return URLMatcher{"call_expression", func(n *Node, source []byte) *URL {
+		callName := n.ChildByFieldName("function").Content()
 
 		// We don't know what the XMLHttpRequest object will be called,
 		// so we have to focus on just the .open bit
@@ -50,7 +49,7 @@ func matchXHR() URLMatcher {
 		// This will miss cases where the method is a variable.
 		arguments := n.ChildByFieldName("arguments")
 
-		method := dequote(content(arguments.NamedChild(0), source))
+		method := arguments.NamedChild(0).RawString()
 
 		if !slices.Contains(
 			[]string{"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"},
@@ -60,15 +59,15 @@ func matchXHR() URLMatcher {
 		}
 
 		urlArg := arguments.NamedChild(1)
-		if !isStringy(urlArg, source) {
+		if !urlArg.IsStringy() {
 			return nil
 		}
 
 		match := &URL{
-			URL:    cleanURL(urlArg, source),
+			URL:    urlArg.CollapsedString(),
 			Method: method,
 			Type:   "XMLHttpRequest.open",
-			Source: content(n, source),
+			Source: n.Content(),
 		}
 
 		// to find headers we need to look for calls to setRequestHeader() on
@@ -103,7 +102,7 @@ func matchXHR() URLMatcher {
 		// Look for call_expressions under the same parent as our .open call.
 		// It's common to end up querying the exact same parent over and over
 		// again, so we cache the results on a per-parent node basis.
-		nodes := make([]*sitter.Node, 0)
+		nodes := make([]*Node, 0)
 		if v, exists := cache.get(parent); exists {
 			nodes = v
 		} else {
@@ -116,7 +115,7 @@ func matchXHR() URLMatcher {
 					arguments: (arguments (string))
 				) @matches
 			`
-			query(parent, q, func(sibling *sitter.Node) {
+			parent.Query(q, func(sibling *Node) {
 				nodes = append(nodes, sibling)
 			})
 			cache.set(parent, nodes)
@@ -131,7 +130,7 @@ func matchXHR() URLMatcher {
 		// it's possible for the .send to be wrapped in a conditional so that might
 		// cause us to miss some values.
 		for _, sibling := range nodes {
-			name := content(sibling.ChildByFieldName("function"), source)
+			name := sibling.ChildByFieldName("function").Content()
 			if !strings.HasSuffix(name, ".setRequestHeader") {
 				continue
 			}
@@ -146,7 +145,7 @@ func matchXHR() URLMatcher {
 				continue
 			}
 
-			header := dequote(content(headerNode, source))
+			header := headerNode.RawString()
 			if _, exists := headers[header]; exists {
 				continue
 			}
@@ -154,7 +153,7 @@ func matchXHR() URLMatcher {
 			var value string
 			valueNode := args.NamedChild(1)
 			if valueNode != nil && valueNode.Type() == "string" {
-				value = dequote(content(valueNode, source))
+				value = valueNode.RawString()
 			}
 
 			headers[header] = value

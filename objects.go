@@ -2,16 +2,14 @@ package jsluice
 
 import (
 	"strings"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type object struct {
-	node   *sitter.Node
+	node   *Node
 	source []byte
 }
 
-func newObject(n *sitter.Node, source []byte) object {
+func newObject(n *Node, source []byte) object {
 	return object{
 		node:   n,
 		source: source,
@@ -34,7 +32,7 @@ func (o object) hasValidNode() bool {
 	return o.node != nil && o.node.Type() == "object"
 }
 
-func (o object) getNodeFunc(fn func(key string) bool) *sitter.Node {
+func (o object) getNodeFunc(fn func(key string) bool) *Node {
 	if !o.hasValidNode() {
 		return nil
 	}
@@ -48,7 +46,7 @@ func (o object) getNodeFunc(fn func(key string) bool) *sitter.Node {
 			continue
 		}
 
-		if !fn(dequote(content(pair.ChildByFieldName("key"), o.source))) {
+		if !fn(pair.ChildByFieldName("key").RawString()) {
 			continue
 		}
 
@@ -57,13 +55,13 @@ func (o object) getNodeFunc(fn func(key string) bool) *sitter.Node {
 	return nil
 }
 
-func (o object) getNode(key string) *sitter.Node {
+func (o object) getNode(key string) *Node {
 	return o.getNodeFunc(func(candidate string) bool {
 		return key == candidate
 	})
 }
 
-func (o object) getNodeI(key string) *sitter.Node {
+func (o object) getNodeI(key string) *Node {
 	key = strings.ToLower(key)
 	return o.getNodeFunc(func(candidate string) bool {
 		return key == strings.ToLower(candidate)
@@ -85,7 +83,7 @@ func (o object) getKeys() []string {
 			continue
 		}
 
-		key := dequote(content(pair.ChildByFieldName("key"), o.source))
+		key := pair.ChildByFieldName("key").RawString()
 		out = append(out, key)
 	}
 	return out
@@ -100,7 +98,7 @@ func (o object) getString(key, defaultVal string) string {
 	if value == nil || value.Type() != "string" {
 		return defaultVal
 	}
-	return dequote(content(value, o.source))
+	return value.RawString()
 }
 
 func (o object) getStringI(key, defaultVal string) string {
@@ -108,5 +106,5 @@ func (o object) getStringI(key, defaultVal string) string {
 	if value == nil || value.Type() != "string" {
 		return defaultVal
 	}
-	return dequote(content(value, o.source))
+	return value.RawString()
 }

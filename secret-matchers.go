@@ -2,8 +2,6 @@ package jsluice
 
 import (
 	"strings"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // A Secret represents any bit of secret or otherwise interesting
@@ -21,14 +19,14 @@ func (a *Analyzer) GetSecrets() []*Secret {
 	out := make([]*Secret, 0)
 
 	// we only want to run each query once so let's cache them
-	nodeCache := make(map[string][]*sitter.Node)
+	nodeCache := make(map[string][]*Node)
 
 	matchers := AllSecretMatchers()
 	for _, m := range matchers {
 
 		if _, exists := nodeCache[m.Query]; !exists {
-			nodes := make([]*sitter.Node, 0)
-			query(a.rootNode, m.Query, func(n *sitter.Node) {
+			nodes := make([]*Node, 0)
+			a.Query(m.Query, func(n *Node) {
 				nodes = append(nodes, n)
 			})
 			nodeCache[m.Query] = nodes
@@ -53,15 +51,15 @@ func (a *Analyzer) GetSecrets() []*Secret {
 // returning any Secret that is found.
 type SecretMatcher struct {
 	Query string
-	Fn    func(*sitter.Node, []byte) *Secret
+	Fn    func(*Node, []byte) *Secret
 }
 
 // AllSecretMatchers returns the default list of SecretMatchers
 func AllSecretMatchers() []SecretMatcher {
 	return []SecretMatcher{
 		// AWS Keys
-		{"(string) @matches", func(n *sitter.Node, source []byte) *Secret {
-			str := dequote(content(n, source))
+		{"(string) @matches", func(n *Node, source []byte) *Secret {
+			str := n.RawString()
 
 			// https://docs.aws.amazon.com/STS/latest/APIReference/API_Credentials.html
 			if len(str) < 16 || len(str) > 128 {
@@ -124,7 +122,7 @@ func AllSecretMatchers() []SecretMatcher {
 		}},
 
 		// REACT_APP_... containing objects
-		{"(object) @matches", func(n *sitter.Node, source []byte) *Secret {
+		{"(object) @matches", func(n *Node, source []byte) *Secret {
 
 			return nil
 			o := newObject(n, source)
@@ -148,7 +146,7 @@ func AllSecretMatchers() []SecretMatcher {
 		}},
 
 		// Firebase objects
-		{"(object) @matches", func(n *sitter.Node, source []byte) *Secret {
+		{"(object) @matches", func(n *Node, source []byte) *Secret {
 			o := newObject(n, source)
 
 			mustHave := map[string]bool{

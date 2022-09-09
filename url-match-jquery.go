@@ -3,14 +3,13 @@ package jsluice
 import (
 	"strings"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"golang.org/x/exp/slices"
 )
 
 func matchJQuery() URLMatcher {
 
-	return URLMatcher{"call_expression", func(n *sitter.Node, source []byte) *URL {
-		callName := content(n.ChildByFieldName("function"), source)
+	return URLMatcher{"call_expression", func(n *Node, source []byte) *URL {
+		callName := n.ChildByFieldName("function").Content()
 
 		if !slices.Contains(
 			[]string{
@@ -48,7 +47,7 @@ func matchJQuery() URLMatcher {
 
 		m := &URL{
 			Type:   callName,
-			Source: content(n, source),
+			Source: n.Content(),
 		}
 
 		// Infer the method for .post and .get calls
@@ -58,11 +57,11 @@ func matchJQuery() URLMatcher {
 			m.Method = "GET"
 		}
 
-		var settingsNode *sitter.Node
+		var settingsNode *Node
 
-		if isStringy(firstArg, source) {
+		if firstArg.IsStringy() {
 			// first argument is the URL
-			m.URL = cleanURL(firstArg, source)
+			m.URL = firstArg.CollapsedString()
 
 			// If the first arg is a URL, the second arg is a
 			// settings object for $.ajax, or a data object for
@@ -93,7 +92,7 @@ func matchJQuery() URLMatcher {
 		settings := newObject(settingsNode, source)
 
 		if m.URL == "" {
-			m.URL = cleanURL(settings.getNode("url"), source)
+			m.URL = settings.getNode("url").CollapsedString()
 		}
 
 		m.Headers = settings.getObject("headers").asMap()

@@ -4,8 +4,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // A URL is any URL found in the source code with accompanying details
@@ -36,7 +34,7 @@ func (a *Analyzer) GetURLs() []*URL {
 	re := regexp.MustCompile("[^A-Z-a-z]")
 
 	// function to run on entry to each node in the tree
-	enter := func(n *sitter.Node) {
+	enter := func(n *Node) {
 
 		for _, matcher := range a.urlMatchers {
 			if matcher.Type != n.Type() {
@@ -98,7 +96,7 @@ func (a *Analyzer) GetURLs() []*URL {
 	}
 
 	// find the nodes we need in the the tree and run the enter function for every node
-	query(a.rootNode, "[(assignment_expression) (call_expression) (string)] @matches", enter)
+	a.Query("[(assignment_expression) (call_expression) (string)] @matches", enter)
 
 	return matches
 }
@@ -121,7 +119,7 @@ func unique[T comparable](items []T) []T {
 // and a function to actually do the matching and producing of the *URL
 type URLMatcher struct {
 	Type string
-	Fn   func(*sitter.Node, []byte) *URL
+	Fn   func(*Node, []byte) *URL
 }
 
 // AllURLMatchers returns the detault list of URLMatchers
@@ -158,11 +156,11 @@ func AllURLMatchers() []URLMatcher {
 		matchJQuery(),
 
 		// location assignment
-		{"assignment_expression", func(n *sitter.Node, source []byte) *URL {
+		{"assignment_expression", func(n *Node, source []byte) *URL {
 			left := n.ChildByFieldName("left")
 			right := n.ChildByFieldName("right")
 
-			if !isInterestingAssignment(content(left, source)) {
+			if !isInterestingAssignment(left.Content()) {
 				return nil
 			}
 
@@ -177,7 +175,7 @@ func AllURLMatchers() []URLMatcher {
 			//
 			// So while we might miss out on some things this way, they probably wouldn't
 			// have been super useful to anything automated anyway.
-			rightContent := content(right, source)
+			rightContent := right.Content()
 			if len(rightContent) < 2 {
 				return nil
 			}
@@ -187,16 +185,16 @@ func AllURLMatchers() []URLMatcher {
 			}
 
 			return &URL{
-				URL:    cleanURL(right, source),
+				URL:    right.CollapsedString(),
 				Method: "GET",
 				Type:   "locationAssignment",
-				Source: content(n, source),
+				Source: n.Content(),
 			}
 		}},
 
 		// location replacement
-		{"call_expression", func(n *sitter.Node, source []byte) *URL {
-			callName := content(n.ChildByFieldName("function"), source)
+		{"call_expression", func(n *Node, source []byte) *URL {
+			callName := n.ChildByFieldName("function").Content()
 
 			if !strings.HasSuffix(callName, "location.replace") {
 				return nil
@@ -205,69 +203,69 @@ func AllURLMatchers() []URLMatcher {
 			arguments := n.ChildByFieldName("arguments")
 
 			// check the argument contains at least one string literal
-			if !hasDescendantOfType(arguments.NamedChild(0), "string") {
+			if !arguments.NamedChild(0).IsStringy() {
 				return nil
 			}
 
 			return &URL{
-				URL:    cleanURL(arguments.NamedChild(0), source),
+				URL:    arguments.NamedChild(0).CollapsedString(),
 				Method: "GET",
 				Type:   "locationReplacement",
-				Source: content(n, source),
+				Source: n.Content(),
 			}
 		}},
 
 		// window.open(url)
-		{"call_expression", func(n *sitter.Node, source []byte) *URL {
-			callName := content(n.ChildByFieldName("function"), source)
+		{"call_expression", func(n *Node, source []byte) *URL {
+			callName := n.ChildByFieldName("function").Content()
 			if callName != "window.open" && callName != "open" {
 				return nil
 			}
 			arguments := n.ChildByFieldName("arguments")
 
 			// check the argument contains at least one string literal
-			if !hasDescendantOfType(arguments.NamedChild(0), "string") {
+			if !arguments.NamedChild(0).IsStringy() {
 				return nil
 			}
 
 			return &URL{
-				URL:    cleanURL(arguments.NamedChild(0), source),
+				URL:    arguments.NamedChild(0).CollapsedString(),
 				Method: "GET",
 				Type:   "window.open",
-				Source: content(n, source),
+				Source: n.Content(),
 			}
 			return nil
 		}},
 
 		// fetch(url, [init])
-		{"call_expression", func(n *sitter.Node, source []byte) *URL {
-			callName := content(n.ChildByFieldName("function"), source)
+		{"call_expression", func(n *Node, source []byte) *URL {
+			callName := n.ChildByFieldName("function").Content()
 			if callName != "fetch" {
 				return nil
 			}
 			arguments := n.ChildByFieldName("arguments")
 
 			// check the argument contains at least one string literal
-			if !hasDescendantOfType(arguments.NamedChild(0), "string") {
+			if !arguments.NamedChild(0).IsStringy() {
 				return nil
 			}
 
 			init := newObject(arguments.NamedChild(1), source)
 
 			return &URL{
-				URL:         cleanURL(arguments.NamedChild(0), source),
+				URL:         arguments.NamedChild(0).CollapsedString(),
 				Method:      init.getString("method", "GET"),
 				Headers:     init.getObject("headers").asMap(),
 				ContentType: init.getObject("headers").getStringI("content-type", ""),
 				Type:        "fetch",
-				Source:      content(n, source),
+				Source:      n.Content(),
 			}
 			return nil
 		}},
 
 		// string literals
-		{"string", func(n *sitter.Node, source []byte) *URL {
-			trimmed := dequote(content(n, source))
+		{"string", func(n *Node, source []byte) *URL {
+			trimmed := n.RawString()
 
 			if !MaybeURL(trimmed) {
 				return nil
@@ -276,7 +274,7 @@ func AllURLMatchers() []URLMatcher {
 			return &URL{
 				URL:    trimmed,
 				Type:   "stringLiteral",
-				Source: content(n, source),
+				Source: n.Content(),
 			}
 		}},
 	}

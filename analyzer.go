@@ -12,7 +12,7 @@ type Analyzer struct {
 	source      []byte
 	parser      *sitter.Parser
 	urlMatchers []URLMatcher
-	rootNode    *sitter.Node
+	rootNode    *Node
 }
 
 // NewAnalyzer accepts a slice of bytes representing some JavaScript
@@ -26,6 +26,14 @@ func NewAnalyzer(source []byte) *Analyzer {
 		source:      source,
 		parser:      parser,
 		urlMatchers: AllURLMatchers(),
-		rootNode:    tree.RootNode(),
+		rootNode:    NewNode(tree.RootNode(), source),
 	}
+}
+
+// Query peforms a tree-sitter query on the JavaScript being analyzed.
+// The provided function is called for every node that matches the query.
+// See https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
+// for details on query syntax.
+func (a *Analyzer) Query(q string, fn func(*Node)) {
+	a.rootNode.Query(q, fn)
 }
