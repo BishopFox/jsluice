@@ -39,14 +39,23 @@ func (n *Node) Type() string {
 }
 
 func (n *Node) ChildByFieldName(name string) *Node {
+	if !n.IsValid() {
+		return nil
+	}
 	return NewNode(n.node.ChildByFieldName(name), n.source)
 }
 
 func (n *Node) NamedChild(index int) *Node {
-	return NewNode(n.node.NamedChild(0), n.source)
+	if !n.IsValid() {
+		return nil
+	}
+	return NewNode(n.node.NamedChild(index), n.source)
 }
 
 func (n *Node) NamedChildCount() int {
+	if !n.IsValid() {
+		return 0
+	}
 	return int(n.node.NamedChildCount())
 }
 
@@ -61,7 +70,7 @@ func (n *Node) NamedChildCount() int {
 //  ./upload.php?profile=EXPR&show=EXPR
 //
 func (n *Node) CollapsedString() string {
-	if n.node == nil {
+	if !n.IsValid() {
 		return ""
 	}
 	switch n.Type() {
@@ -78,15 +87,25 @@ func (n *Node) CollapsedString() string {
 	}
 }
 
+func (n *Node) IsValid() bool {
+	return n != nil && n.node != nil
+}
+
 func (n *Node) RawString() string {
 	return dequote(n.Content())
 }
 
 func (n *Node) Parent() *Node {
+	if !n.IsValid() {
+		return nil
+	}
 	return NewNode(n.node.Parent(), n.source)
 }
 
 func (n *Node) Query(query string, fn func(*Node)) {
+	if !n.IsValid() {
+		return
+	}
 	q, err := sitter.NewQuery(
 		[]byte(query),
 		javascript.GetLanguage(),
@@ -122,7 +141,7 @@ func (n *Node) IsStringy() bool {
 		return false
 	}
 
-	switch c[0:0] {
+	switch c[0:1] {
 	case `"`, "'", "`":
 		return true
 	default:

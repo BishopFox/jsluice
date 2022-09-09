@@ -85,7 +85,7 @@ func matchXHR() URLMatcher {
 		// can ascend the tree until we hit a node with type "function_declaration",
 		// or we hit a nil parent.
 		parent := n.Parent()
-		if parent == nil {
+		if !parent.IsValid() {
 			return match
 		}
 		for {

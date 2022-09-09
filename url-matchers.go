@@ -175,12 +175,7 @@ func AllURLMatchers() []URLMatcher {
 			//
 			// So while we might miss out on some things this way, they probably wouldn't
 			// have been super useful to anything automated anyway.
-			rightContent := right.Content()
-			if len(rightContent) < 2 {
-				return nil
-			}
-			p := rightContent[0:1]
-			if p != `"` && p != "'" && p != "`" {
+			if !right.IsStringy() {
 				return nil
 			}
 

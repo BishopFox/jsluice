@@ -29,12 +29,12 @@ func (o object) asMap() map[string]string {
 }
 
 func (o object) hasValidNode() bool {
-	return o.node != nil && o.node.Type() == "object"
+	return o.node.IsValid() && o.node.Type() == "object"
 }
 
 func (o object) getNodeFunc(fn func(key string) bool) *Node {
 	if !o.hasValidNode() {
-		return nil
+		return &Node{}
 	}
 
 	count := int(o.node.NamedChildCount())
