@@ -8,7 +8,7 @@ import (
 
 func matchJQuery() URLMatcher {
 
-	return URLMatcher{"call_expression", func(n *Node, source []byte) *URL {
+	return URLMatcher{"call_expression", func(n *Node) *URL {
 		callName := n.ChildByFieldName("function").Content()
 
 		if !slices.Contains(
@@ -69,7 +69,7 @@ func matchJQuery() URLMatcher {
 			if strings.HasSuffix(callName, ".ajax") {
 				settingsNode = secondArg
 			} else {
-				params := newObject(secondArg, source).getKeys()
+				params := secondArg.AsObject().getKeys()
 				if m.Method == "GET" {
 					m.QueryParams = params
 				} else {
@@ -89,7 +89,7 @@ func matchJQuery() URLMatcher {
 			return m
 		}
 
-		settings := newObject(settingsNode, source)
+		settings := settingsNode.AsObject()
 
 		if m.URL == "" {
 			m.URL = settings.getNode("url").CollapsedString()

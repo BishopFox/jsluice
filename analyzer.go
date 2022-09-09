@@ -9,8 +9,6 @@ import (
 // the parse tree for a JavaScript file and provides mechanisms to
 // extract URLs, secrets etc
 type Analyzer struct {
-	source      []byte
-	parser      *sitter.Parser
 	urlMatchers []URLMatcher
 	rootNode    *Node
 }
@@ -23,8 +21,6 @@ func NewAnalyzer(source []byte) *Analyzer {
 	tree := parser.Parse(nil, source)
 
 	return &Analyzer{
-		source:      source,
-		parser:      parser,
 		urlMatchers: AllURLMatchers(),
 		rootNode:    NewNode(tree.RootNode(), source),
 	}

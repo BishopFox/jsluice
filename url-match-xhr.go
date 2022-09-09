@@ -34,7 +34,7 @@ func (c *nodeCache) get(k *Node) ([]*Node, bool) {
 func matchXHR() URLMatcher {
 	cache := newNodeCache()
 
-	return URLMatcher{"call_expression", func(n *Node, source []byte) *URL {
+	return URLMatcher{"call_expression", func(n *Node) *URL {
 		callName := n.ChildByFieldName("function").Content()
 
 		// We don't know what the XMLHttpRequest object will be called,

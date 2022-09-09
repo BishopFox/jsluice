@@ -20,6 +20,10 @@ func NewNode(n *sitter.Node, source []byte) *Node {
 	}
 }
 
+func (n *Node) AsObject() object {
+	return newObject(n, n.source)
+}
+
 func (n *Node) Content() string {
 	if n.node == nil {
 		return ""

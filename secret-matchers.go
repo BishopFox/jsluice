@@ -35,7 +35,7 @@ func (a *Analyzer) GetSecrets() []*Secret {
 		nodes := nodeCache[m.Query]
 
 		for _, n := range nodes {
-			match := m.Fn(n, a.source)
+			match := m.Fn(n)
 			if match == nil {
 				continue
 			}
@@ -51,14 +51,14 @@ func (a *Analyzer) GetSecrets() []*Secret {
 // returning any Secret that is found.
 type SecretMatcher struct {
 	Query string
-	Fn    func(*Node, []byte) *Secret
+	Fn    func(*Node) *Secret
 }
 
 // AllSecretMatchers returns the default list of SecretMatchers
 func AllSecretMatchers() []SecretMatcher {
 	return []SecretMatcher{
 		// AWS Keys
-		{"(string) @matches", func(n *Node, source []byte) *Secret {
+		{"(string) @matches", func(n *Node) *Secret {
 			str := n.RawString()
 
 			// https://docs.aws.amazon.com/STS/latest/APIReference/API_Credentials.html
@@ -102,7 +102,7 @@ func AllSecretMatchers() []SecretMatcher {
 				return match
 			}
 
-			o := newObject(grandparent, source)
+			o := grandparent.AsObject()
 
 			for _, k := range o.getKeys() {
 				k = strings.ToLower(k)
@@ -122,10 +122,10 @@ func AllSecretMatchers() []SecretMatcher {
 		}},
 
 		// REACT_APP_... containing objects
-		{"(object) @matches", func(n *Node, source []byte) *Secret {
+		{"(object) @matches", func(n *Node) *Secret {
 
 			return nil
-			o := newObject(n, source)
+			o := n.AsObject()
 
 			hasReactAppKeys := false
 			for _, k := range o.getKeys() {
@@ -146,8 +146,8 @@ func AllSecretMatchers() []SecretMatcher {
 		}},
 
 		// Firebase objects
-		{"(object) @matches", func(n *Node, source []byte) *Secret {
-			o := newObject(n, source)
+		{"(object) @matches", func(n *Node) *Secret {
+			o := n.AsObject()
 
 			mustHave := map[string]bool{
 				"apiKey":        true,

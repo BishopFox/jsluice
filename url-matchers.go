@@ -41,7 +41,7 @@ func (a *Analyzer) GetURLs() []*URL {
 				continue
 			}
 
-			match := matcher.Fn(n, a.source)
+			match := matcher.Fn(n)
 			if match == nil {
 				continue
 			}
@@ -119,7 +119,7 @@ func unique[T comparable](items []T) []T {
 // and a function to actually do the matching and producing of the *URL
 type URLMatcher struct {
 	Type string
-	Fn   func(*Node, []byte) *URL
+	Fn   func(*Node) *URL
 }
 
 // AllURLMatchers returns the detault list of URLMatchers
@@ -156,7 +156,7 @@ func AllURLMatchers() []URLMatcher {
 		matchJQuery(),
 
 		// location assignment
-		{"assignment_expression", func(n *Node, source []byte) *URL {
+		{"assignment_expression", func(n *Node) *URL {
 			left := n.ChildByFieldName("left")
 			right := n.ChildByFieldName("right")
 
@@ -193,7 +193,7 @@ func AllURLMatchers() []URLMatcher {
 		}},
 
 		// location replacement
-		{"call_expression", func(n *Node, source []byte) *URL {
+		{"call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 
 			if !strings.HasSuffix(callName, "location.replace") {
@@ -216,7 +216,7 @@ func AllURLMatchers() []URLMatcher {
 		}},
 
 		// window.open(url)
-		{"call_expression", func(n *Node, source []byte) *URL {
+		{"call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 			if callName != "window.open" && callName != "open" {
 				return nil
@@ -238,7 +238,7 @@ func AllURLMatchers() []URLMatcher {
 		}},
 
 		// fetch(url, [init])
-		{"call_expression", func(n *Node, source []byte) *URL {
+		{"call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 			if callName != "fetch" {
 				return nil
@@ -250,7 +250,7 @@ func AllURLMatchers() []URLMatcher {
 				return nil
 			}
 
-			init := newObject(arguments.NamedChild(1), source)
+			init := arguments.NamedChild(1).AsObject()
 
 			return &URL{
 				URL:         arguments.NamedChild(0).CollapsedString(),
@@ -264,7 +264,7 @@ func AllURLMatchers() []URLMatcher {
 		}},
 
 		// string literals
-		{"string", func(n *Node, source []byte) *URL {
+		{"string", func(n *Node) *URL {
 			trimmed := n.RawString()
 
 			if !MaybeURL(trimmed) {
