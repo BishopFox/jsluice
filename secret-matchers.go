@@ -151,7 +151,6 @@ func AllSecretMatchers() []SecretMatcher {
 
 			mustHave := map[string]bool{
 				"apiKey":        true,
-				"appId":         true,
 				"authDomain":    true,
 				"projectId":     true,
 				"storageBucket": true,
@@ -164,6 +163,10 @@ func AllSecretMatchers() []SecretMatcher {
 				}
 			}
 			if count != len(mustHave) {
+				return nil
+			}
+
+			if !strings.HasPrefix(o.getStringI("apiKey", ""), "AIza") {
 				return nil
 			}
 
