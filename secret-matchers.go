@@ -1,6 +1,7 @@
 package jsluice
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -56,6 +57,8 @@ type SecretMatcher struct {
 
 // AllSecretMatchers returns the default list of SecretMatchers
 func AllSecretMatchers() []SecretMatcher {
+	awsKey := regexp.MustCompile("^\\w+$")
+
 	return []SecretMatcher{
 		// AWS Keys
 		{"(string) @matches", func(n *Node) *Secret {
@@ -79,7 +82,10 @@ func AllSecretMatchers() []SecretMatcher {
 				return nil
 			}
 
-			// TODO: check the rest of the chars in the string
+			// Check it matches the regex
+			if !awsKey.MatchString(str) {
+				return nil
+			}
 
 			data := make(map[string]string)
 			data["key"] = str
