@@ -58,6 +58,7 @@ type SecretMatcher struct {
 // AllSecretMatchers returns the default list of SecretMatchers
 func AllSecretMatchers() []SecretMatcher {
 	awsKey := regexp.MustCompile("^\\w+$")
+	gcpKey := regexp.MustCompile("^AIza[a-zA-Z0-9+_-]+$")
 
 	return []SecretMatcher{
 		// AWS Keys
@@ -96,7 +97,7 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			// We want to look in the same object for anything 'secret'.
-			// If the parent type is "pair" and the granparent type is
+			// If the parent type is "pair" and the grandparent type is
 			// "object" we can do that.
 			parent := n.Parent()
 			if parent == nil || parent.Type() != "pair" {
@@ -151,35 +152,47 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 		}},
 
-		// Firebase objects
-		{"(object) @matches", func(n *Node) *Secret {
-			o := n.AsObject()
+		// GCP keys
+		{"(string) @matches", func(n *Node) *Secret {
+			str := n.RawString()
 
-			mustHave := map[string]bool{
-				"apiKey":        true,
-				"authDomain":    true,
-				"projectId":     true,
-				"storageBucket": true,
-			}
-
-			count := 0
-			for _, k := range o.getKeys() {
-				if mustHave[k] {
-					count++
-				}
-			}
-			if count != len(mustHave) {
+			// Prefix check is nice and fast so we'll do that first
+			// Remember that there are a *lot* of strings in JS files :D
+			if !strings.HasPrefix(str, "AIza") {
 				return nil
 			}
 
-			if !strings.HasPrefix(o.getStringI("apiKey", ""), "AIza") {
+			if !gcpKey.MatchString(str) {
 				return nil
 			}
 
-			return &Secret{
-				Kind: "firebase",
-				Data: o.asMap(),
+			data := struct {
+				Key     string            `json:"key"`
+				Context map[string]string `json:"context,omitempty"`
+			}{
+				Key: str,
 			}
+
+			match := &Secret{
+				Kind: "gcpKey",
+				Data: data,
+			}
+
+			// If the key is in an object we want to include that whole object as context
+			parent := n.Parent()
+			if parent == nil || parent.Type() != "pair" {
+				return match
+			}
+
+			grandparent := parent.Parent()
+			if grandparent == nil || grandparent.Type() != "object" {
+				return match
+			}
+
+			data.Context = grandparent.AsObject().asMap()
+			match.Data = data
+
+			return match
 		}},
 	}
 }
