@@ -9,9 +9,10 @@ import (
 // data found within a JavaScript file. E.g. an AWS access key and
 // secret.
 type Secret struct {
-	Kind     string `json:"kind"`
-	Data     any    `json:"data"`
-	Filename string `json:"filename,omitempty"`
+	Kind       string `json:"kind"`
+	Data       any    `json:"data"`
+	Filename   string `json:"filename,omitempty"`
+	LeadWorthy bool   `json:"leadWorthy"`
 }
 
 // GetSecrets uses the parse tree and a set of Matchers (those provided
@@ -97,8 +98,9 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			match := &Secret{
-				Kind: "AWSAccessKey",
-				Data: data,
+				Kind:       "AWSAccessKey",
+				LeadWorthy: false,
+				Data:       data,
 			}
 
 			// We want to look in the same object for anything 'secret'.
@@ -128,8 +130,9 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			return &Secret{
-				Kind: "AWSAccessKey",
-				Data: data,
+				Kind:       "AWSAccessKey",
+				LeadWorthy: data.Secret != "",
+				Data:       data,
 			}
 
 		}},
@@ -182,8 +185,9 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			match := &Secret{
-				Kind: "gcpKey",
-				Data: data,
+				Kind:       "gcpKey",
+				LeadWorthy: false,
+				Data:       data,
 			}
 
 			// If the key is in an object we want to include that whole object as context
@@ -229,8 +233,9 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			return &Secret{
-				Kind: "firebase",
-				Data: o.asMap(),
+				Kind:       "firebase",
+				LeadWorthy: true,
+				Data:       o.asMap(),
 			}
 		}},
 
