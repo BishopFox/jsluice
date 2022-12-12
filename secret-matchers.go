@@ -88,8 +88,13 @@ func AllSecretMatchers() []SecretMatcher {
 				return nil
 			}
 
-			data := make(map[string]string)
-			data["key"] = str
+			data := struct {
+				Key     string            `json:"key"`
+				Secret  string            `json:"secret,omitempty"`
+				Context map[string]string `json:"context,omitempty"`
+			}{
+				Key: str,
+			}
 
 			match := &Secret{
 				Kind: "AWSAccessKey",
@@ -110,13 +115,14 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			o := grandparent.AsObject()
+			data.Context = o.asMap()
 
 			for _, k := range o.getKeys() {
 				k = strings.ToLower(k)
 				if strings.Contains(k, "secret") {
 					// TODO: check format of value
 					// TODO: think of a way to handle multiple secrets in the same object?
-					data["secret"] = DecodeString(o.getStringI(k, ""))
+					data.Secret = DecodeString(o.getStringI(k, ""))
 					break
 				}
 			}
@@ -131,7 +137,9 @@ func AllSecretMatchers() []SecretMatcher {
 		// REACT_APP_... containing objects
 		{"(object) @matches", func(n *Node) *Secret {
 
+			// disabled due to high false positive rate
 			return nil
+
 			o := n.AsObject()
 
 			hasReactAppKeys := false
@@ -190,6 +198,82 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			data.Context = grandparent.AsObject().asMap()
+			match.Data = data
+
+			return match
+		}},
+
+		// Firebase objects
+		{"(object) @matches", func(n *Node) *Secret {
+			o := n.AsObject()
+
+			mustHave := map[string]bool{
+				"apiKey":        true,
+				"authDomain":    true,
+				"projectId":     true,
+				"storageBucket": true,
+			}
+
+			count := 0
+			for _, k := range o.getKeys() {
+				if mustHave[k] {
+					count++
+				}
+			}
+			if count != len(mustHave) {
+				return nil
+			}
+
+			if !strings.HasPrefix(o.getStringI("apiKey", ""), "AIza") {
+				return nil
+			}
+
+			return &Secret{
+				Kind: "firebase",
+				Data: o.asMap(),
+			}
+		}},
+
+		// generic secrets
+		{"(pair) @matches", func(n *Node) *Secret {
+
+			// disabled due to very high false positive rate
+			// but left easy to enable for research purposes
+			return nil
+
+			key := n.ChildByFieldName("key")
+			if key == nil {
+				return nil
+			}
+
+			keyStr := strings.ToLower(key.RawString())
+			if !strings.Contains(keyStr, "secret") {
+				return nil
+			}
+
+			value := n.ChildByFieldName("value")
+			if value == nil || value.Type() != "string" {
+				return nil
+			}
+
+			data := struct {
+				Key     string            `json:"key"`
+				Context map[string]string `json:"context,omitempty"`
+			}{
+				Key: value.RawString(),
+			}
+
+			match := &Secret{
+				Kind: "genericSecret",
+				Data: data,
+			}
+
+			parent := n.Parent()
+			if parent == nil || parent.Type() != "object" {
+				return match
+			}
+
+			data.Context = parent.AsObject().asMap()
 			match.Data = data
 
 			return match
