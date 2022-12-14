@@ -1,7 +1,6 @@
 package jsluice
 
 import (
-	"regexp"
 	"strings"
 )
 
@@ -58,84 +57,12 @@ type SecretMatcher struct {
 
 // AllSecretMatchers returns the default list of SecretMatchers
 func AllSecretMatchers() []SecretMatcher {
-	awsKey := regexp.MustCompile("^\\w+$")
-	gcpKey := regexp.MustCompile("^AIza[a-zA-Z0-9+_-]+$")
 
 	return []SecretMatcher{
-		// AWS Keys
-		{"(string) @matches", func(n *Node) *Secret {
-			str := n.RawString()
-
-			// https://docs.aws.amazon.com/STS/latest/APIReference/API_Credentials.html
-			if len(str) < 16 || len(str) > 128 {
-				return nil
-			}
-			prefixes := []string{"AKIA", "A3T", "AGPA", "AIDA", "AROA", "AIPA", "ANPA", "ANVA", "ASIA"}
-
-			found := false
-			for _, p := range prefixes {
-				if strings.HasPrefix(str, p) {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				return nil
-			}
-
-			// Check it matches the regex
-			if !awsKey.MatchString(str) {
-				return nil
-			}
-
-			data := struct {
-				Key     string            `json:"key"`
-				Secret  string            `json:"secret,omitempty"`
-				Context map[string]string `json:"context,omitempty"`
-			}{
-				Key: str,
-			}
-
-			match := &Secret{
-				Kind:       "AWSAccessKey",
-				LeadWorthy: false,
-				Data:       data,
-			}
-
-			// We want to look in the same object for anything 'secret'.
-			// If the parent type is "pair" and the grandparent type is
-			// "object" we can do that.
-			parent := n.Parent()
-			if parent == nil || parent.Type() != "pair" {
-				return match
-			}
-
-			grandparent := parent.Parent()
-			if grandparent == nil || grandparent.Type() != "object" {
-				return match
-			}
-
-			o := grandparent.AsObject()
-			data.Context = o.asMap()
-
-			for _, k := range o.getKeys() {
-				k = strings.ToLower(k)
-				if strings.Contains(k, "secret") {
-					// TODO: check format of value
-					// TODO: think of a way to handle multiple secrets in the same object?
-					data.Secret = DecodeString(o.getStringI(k, ""))
-					break
-				}
-			}
-
-			return &Secret{
-				Kind:       "AWSAccessKey",
-				LeadWorthy: data.Secret != "",
-				Data:       data,
-			}
-
-		}},
+		awsMatcher(),
+		gcpKeyMatcher(),
+		firebaseMatcher(),
+		githubKeyMatcher(),
 
 		// REACT_APP_... containing objects
 		{"(object) @matches", func(n *Node) *Secret {
@@ -160,82 +87,6 @@ func AllSecretMatchers() []SecretMatcher {
 			return &Secret{
 				Kind: "reactApp",
 				Data: o.asMap(),
-			}
-		}},
-
-		// GCP keys
-		{"(string) @matches", func(n *Node) *Secret {
-			str := n.RawString()
-
-			// Prefix check is nice and fast so we'll do that first
-			// Remember that there are a *lot* of strings in JS files :D
-			if !strings.HasPrefix(str, "AIza") {
-				return nil
-			}
-
-			if !gcpKey.MatchString(str) {
-				return nil
-			}
-
-			data := struct {
-				Key     string            `json:"key"`
-				Context map[string]string `json:"context,omitempty"`
-			}{
-				Key: str,
-			}
-
-			match := &Secret{
-				Kind:       "gcpKey",
-				LeadWorthy: false,
-				Data:       data,
-			}
-
-			// If the key is in an object we want to include that whole object as context
-			parent := n.Parent()
-			if parent == nil || parent.Type() != "pair" {
-				return match
-			}
-
-			grandparent := parent.Parent()
-			if grandparent == nil || grandparent.Type() != "object" {
-				return match
-			}
-
-			data.Context = grandparent.AsObject().asMap()
-			match.Data = data
-
-			return match
-		}},
-
-		// Firebase objects
-		{"(object) @matches", func(n *Node) *Secret {
-			o := n.AsObject()
-
-			mustHave := map[string]bool{
-				"apiKey":        true,
-				"authDomain":    true,
-				"projectId":     true,
-				"storageBucket": true,
-			}
-
-			count := 0
-			for _, k := range o.getKeys() {
-				if mustHave[k] {
-					count++
-				}
-			}
-			if count != len(mustHave) {
-				return nil
-			}
-
-			if !strings.HasPrefix(o.getStringI("apiKey", ""), "AIza") {
-				return nil
-			}
-
-			return &Secret{
-				Kind:       "firebase",
-				LeadWorthy: true,
-				Data:       o.asMap(),
 			}
 		}},
 
