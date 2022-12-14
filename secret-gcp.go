@@ -22,8 +22,7 @@ func gcpKeyMatcher() SecretMatcher {
 		}
 
 		data := struct {
-			Key     string            `json:"key"`
-			Context map[string]string `json:"context,omitempty"`
+			Key string `json:"key"`
 		}{
 			Key: str,
 		}
@@ -45,8 +44,7 @@ func gcpKeyMatcher() SecretMatcher {
 			return match
 		}
 
-		data.Context = grandparent.AsObject().asMap()
-		match.Data = data
+		match.Context = grandparent.AsObject().asMap()
 
 		return match
 	}}

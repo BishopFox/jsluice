@@ -8,10 +8,11 @@ import (
 // data found within a JavaScript file. E.g. an AWS access key and
 // secret.
 type Secret struct {
-	Kind       string `json:"kind"`
-	Data       any    `json:"data"`
-	Filename   string `json:"filename,omitempty"`
-	LeadWorthy bool   `json:"leadWorthy"`
+	Kind       string            `json:"kind"`
+	Data       any               `json:"data"`
+	Filename   string            `json:"filename,omitempty"`
+	LeadWorthy bool              `json:"leadWorthy"`
+	Context    map[string]string `json:"context"`
 }
 
 // GetSecrets uses the parse tree and a set of Matchers (those provided
@@ -113,8 +114,7 @@ func AllSecretMatchers() []SecretMatcher {
 			}
 
 			data := struct {
-				Key     string            `json:"key"`
-				Context map[string]string `json:"context,omitempty"`
+				Key string `json:"key"`
 			}{
 				Key: value.RawString(),
 			}
@@ -129,8 +129,7 @@ func AllSecretMatchers() []SecretMatcher {
 				return match
 			}
 
-			data.Context = parent.AsObject().asMap()
-			match.Data = data
+			match.Context = parent.AsObject().asMap()
 
 			return match
 		}},

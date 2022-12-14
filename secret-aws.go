@@ -35,9 +35,8 @@ func awsMatcher() SecretMatcher {
 		}
 
 		data := struct {
-			Key     string            `json:"key"`
-			Secret  string            `json:"secret,omitempty"`
-			Context map[string]string `json:"context,omitempty"`
+			Key    string `json:"key"`
+			Secret string `json:"secret,omitempty"`
 		}{
 			Key: str,
 		}
@@ -62,7 +61,6 @@ func awsMatcher() SecretMatcher {
 		}
 
 		o := grandparent.AsObject()
-		data.Context = o.asMap()
 
 		for _, k := range o.getKeys() {
 			k = strings.ToLower(k)
@@ -78,6 +76,7 @@ func awsMatcher() SecretMatcher {
 			Kind:       "AWSAccessKey",
 			LeadWorthy: data.Secret != "",
 			Data:       data,
+			Context:    o.asMap(),
 		}
 
 	}}
