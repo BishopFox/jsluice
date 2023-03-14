@@ -1,4 +1,4 @@
-module github.com/bishopfoxmss/jsluice
+module github.com/BishopFox/jsluice
 
 go 1.18
 

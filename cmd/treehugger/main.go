@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/bishopfoxmss/jsluice"
+	"github.com/BishopFox/jsluice"
 )
 
 func main() {

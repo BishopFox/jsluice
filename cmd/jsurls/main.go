@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bishopfoxmss/jsluice"
+	"github.com/BishopFox/jsluice"
 	"github.com/pkg/profile"
 	flag "github.com/spf13/pflag"
 )

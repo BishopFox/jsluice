@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/bishopfoxmss/jsluice"
+	"github.com/BishopFox/jsluice"
 	"github.com/pkg/profile"
 )
 
