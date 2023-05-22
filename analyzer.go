@@ -9,8 +9,9 @@ import (
 // the parse tree for a JavaScript file and provides mechanisms to
 // extract URLs, secrets etc
 type Analyzer struct {
-	urlMatchers []URLMatcher
-	rootNode    *Node
+	urlMatchers        []URLMatcher
+	rootNode           *Node
+	userSecretMatchers []SecretMatcher
 }
 
 // NewAnalyzer accepts a slice of bytes representing some JavaScript

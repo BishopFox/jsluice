@@ -15,6 +15,15 @@ type Secret struct {
 	Context    map[string]string `json:"context"`
 }
 
+// AddSecretMatcher allows custom SecretMatchers to be added to the Analyzer
+func (a *Analyzer) AddSecretMatcher(s SecretMatcher) {
+	if a.userSecretMatchers == nil {
+		a.userSecretMatchers = make([]SecretMatcher, 0)
+	}
+
+	a.userSecretMatchers = append(a.userSecretMatchers, s)
+}
+
 // GetSecrets uses the parse tree and a set of Matchers (those provided
 // by AllSecretMatchers()) to find secrets in JavaScript source code.
 func (a *Analyzer) GetSecrets() []*Secret {
@@ -24,8 +33,12 @@ func (a *Analyzer) GetSecrets() []*Secret {
 	nodeCache := make(map[string][]*Node)
 
 	matchers := AllSecretMatchers()
-	for _, m := range matchers {
 
+	if a.userSecretMatchers != nil {
+		matchers = append(matchers, a.userSecretMatchers...)
+	}
+
+	for _, m := range matchers {
 		if _, exists := nodeCache[m.Query]; !exists {
 			nodes := make([]*Node, 0)
 			a.Query(m.Query, func(n *Node) {
