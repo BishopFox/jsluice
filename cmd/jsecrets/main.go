@@ -46,7 +46,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		analyzer.AddSecretMatcher(patterns.SecretMatcher())
+		analyzer.AddSecretMatchers(patterns.SecretMatchers())
 	}
 
 	matches := analyzer.GetSecrets()

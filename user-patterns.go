@@ -2,38 +2,126 @@ package jsluice
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"regexp"
 )
 
 type UserPattern struct {
-	Name    string `json:"name"`
-	Pattern string `json:"pattern"`
+	Name        string `json:"name"`
+	Pattern     string `json:"pattern"`
+	NamePattern string `json:"namePattern"`
 
-	re *regexp.Regexp
+	re     *regexp.Regexp
+	reName *regexp.Regexp
+}
+
+func (u *UserPattern) ParseRegex() error {
+	if u.Pattern != "" {
+		re, err := regexp.Compile(u.Pattern)
+		if err != nil {
+			return err
+		}
+		u.re = re
+	}
+
+	if u.NamePattern != "" {
+		re, err := regexp.Compile(u.NamePattern)
+		if err != nil {
+			return err
+		}
+		u.reName = re
+	}
+
+	if u.re == nil && u.reName == nil {
+		return errors.New("pattern, namePattern, or both must be supplied")
+	}
+
+	return nil
 }
 
 func (u *UserPattern) Match(in string) bool {
+	if u.re == nil {
+		return true
+	}
 	return u.re.MatchString(in)
+}
+
+func (u *UserPattern) MatchName(in string) bool {
+	if u.reName == nil {
+		return true
+	}
+	return u.reName.MatchString(in)
+}
+
+func (u *UserPattern) SecretMatcher() SecretMatcher {
+	if u.reName != nil {
+		return u.pairMatcher()
+	}
+
+	return u.stringMatcher()
+}
+
+func (u *UserPattern) pairMatcher() SecretMatcher {
+	return SecretMatcher{"(pair) @matches", func(n *Node) *Secret {
+
+		key := n.ChildByFieldName("key")
+		if key == nil || !u.MatchName(key.RawString()) {
+			return nil
+		}
+
+		value := n.ChildByFieldName("value")
+		if value == nil || value.Type() != "string" {
+			return nil
+		}
+
+		if !u.Match(value.RawString()) {
+			return nil
+		}
+
+		secret := &Secret{
+			Kind: u.Name,
+			Data: map[string]string{
+				"key":   key.RawString(),
+				"value": value.RawString(),
+			},
+		}
+
+		parent := n.Parent()
+		if parent == nil || parent.Type() != "object" {
+			return secret
+		}
+
+		secret.Context = parent.AsObject().asMap()
+
+		return secret
+
+	}}
+}
+
+func (u *UserPattern) stringMatcher() SecretMatcher {
+	return SecretMatcher{"(string) @matches", func(n *Node) *Secret {
+		in := n.RawString()
+		if !u.Match(in) {
+			return nil
+		}
+
+		return &Secret{
+			Kind: u.Name,
+			Data: map[string]string{"match": in},
+		}
+	}}
 }
 
 type UserPatterns []*UserPattern
 
-func (u UserPatterns) SecretMatcher() SecretMatcher {
-	return SecretMatcher{"(string) @matches", func(n *Node) *Secret {
-		for _, p := range u {
-			in := n.RawString()
-			if !p.Match(in) {
-				continue
-			}
+func (u UserPatterns) SecretMatchers() []SecretMatcher {
+	out := make([]SecretMatcher, 0)
 
-			return &Secret{
-				Kind: p.Name,
-				Data: map[string]string{"match": in},
-			}
-		}
-		return nil
-	}}
+	for _, p := range u {
+		out = append(out, p.SecretMatcher())
+	}
+	return out
 }
 
 func ParseUserPatterns(r io.Reader) (UserPatterns, error) {
@@ -46,12 +134,10 @@ func ParseUserPatterns(r io.Reader) (UserPatterns, error) {
 	}
 
 	for _, p := range out {
-		re, err := regexp.Compile(p.Pattern)
+		err = p.ParseRegex()
 		if err != nil {
 			return out, err
 		}
-
-		p.re = re
 	}
 
 	return out, nil

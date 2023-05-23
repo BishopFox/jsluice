@@ -24,6 +24,15 @@ func (a *Analyzer) AddSecretMatcher(s SecretMatcher) {
 	a.userSecretMatchers = append(a.userSecretMatchers, s)
 }
 
+// AddSecretMatchers allows multiple custom SecretMatchers to be added to the Analyzer
+func (a *Analyzer) AddSecretMatchers(ss []SecretMatcher) {
+	if a.userSecretMatchers == nil {
+		a.userSecretMatchers = make([]SecretMatcher, 0)
+	}
+
+	a.userSecretMatchers = append(a.userSecretMatchers, ss...)
+}
+
 // GetSecrets uses the parse tree and a set of Matchers (those provided
 // by AllSecretMatchers()) to find secrets in JavaScript source code.
 func (a *Analyzer) GetSecrets() []*Secret {
