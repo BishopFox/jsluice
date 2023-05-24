@@ -34,7 +34,7 @@ func (u *UserPattern) ParseRegex() error {
 	}
 
 	if u.re == nil && u.reName == nil {
-		return errors.New("pattern, namePattern, or both must be supplied")
+		return errors.New("pattern, namePattern, or both must be supplied in user-defined matcher")
 	}
 
 	return nil
