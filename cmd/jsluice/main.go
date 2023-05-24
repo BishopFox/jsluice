@@ -25,6 +25,9 @@ type options struct {
 	ignoreStrings   bool
 	includeFilename bool
 	resolvePaths    string
+
+	// query
+	query string
 }
 
 const (
@@ -48,6 +51,9 @@ func main() {
 	flag.BoolVar(&opts.ignoreStrings, "ignore-strings", false, "Ignore matches from string literals")
 	flag.BoolVar(&opts.includeFilename, "include-filename", false, "Include the filename of the matched file in the output")
 	flag.StringVar(&opts.resolvePaths, "resolve-paths", "", "Resolve relative paths using the absolute URL provided")
+
+	// query options
+	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run")
 
 	flag.Parse()
 
@@ -73,6 +79,9 @@ func main() {
 		for {
 			select {
 			case out := <-output:
+				if out == "" {
+					continue
+				}
 				fmt.Println(out)
 			case err := <-errors:
 				fmt.Fprintf(os.Stderr, "error: %s\n", err)
@@ -85,8 +94,9 @@ func main() {
 	// now the process workers
 	var modeFn cmdFn
 	modes := map[string]cmdFn{
-		modeURLs: extractURLs,
-		modeTree: printTree,
+		modeURLs:  extractURLs,
+		modeTree:  printTree,
+		modeQuery: runQuery,
 	}
 
 	if _, exists := modes[mode]; !exists {
