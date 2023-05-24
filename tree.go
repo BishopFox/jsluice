@@ -160,17 +160,19 @@ func content(n *sitter.Node, source []byte) string {
 	return n.Content(source)
 }
 
-func PrintTree(source []byte) {
+func PrintTree(source []byte) string {
 	parser := sitter.NewParser()
 	parser.SetLanguage(javascript.GetLanguage())
 
 	tree := parser.Parse(nil, source)
 	root := tree.RootNode()
 
-	prettyPrint(root, source)
+	return getTree(root, source)
 }
 
-func prettyPrint(n *sitter.Node, source []byte) {
+func getTree(n *sitter.Node, source []byte) string {
+
+	out := &strings.Builder{}
 
 	c := sitter.NewTreeCursor(n)
 	defer c.Close()
@@ -189,7 +191,7 @@ func prettyPrint(n *sitter.Node, source []byte) {
 			if c.CurrentNode().ChildCount() == 0 || c.CurrentNode().Type() == "string" {
 				contentStr = fmt.Sprintf(" (%s)", content(c.CurrentNode(), source))
 			}
-			fmt.Printf("%s%s%s%s\n", strings.Repeat("  ", depth), fieldName, c.CurrentNode().Type(), contentStr)
+			fmt.Fprintf(out, "%s%s%s%s\n", strings.Repeat("  ", depth), fieldName, c.CurrentNode().Type(), contentStr)
 		}
 
 		// descend into the tree
@@ -214,4 +216,5 @@ func prettyPrint(n *sitter.Node, source []byte) {
 		break
 	}
 
+	return strings.TrimSpace(out.String())
 }

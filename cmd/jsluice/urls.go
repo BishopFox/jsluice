@@ -8,7 +8,7 @@ import (
 	"github.com/BishopFox/jsluice"
 )
 
-func extractURLs(opts options, source []byte, output chan string, errs chan error) {
+func extractURLs(opts options, filename string, source []byte, output chan string, errs chan error) {
 
 	var resolveURL *url.URL
 	var err error
@@ -26,9 +26,8 @@ func extractURLs(opts options, source []byte, output chan string, errs chan erro
 			continue
 		}
 
-		// remove filename if the user doesn't want it
-		if !opts.includeFilename {
-			m.Filename = ""
+		if opts.includeFilename {
+			m.Filename = filename
 		}
 
 		// remove any souce if we don't want to display it

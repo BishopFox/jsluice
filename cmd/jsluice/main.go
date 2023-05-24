@@ -34,7 +34,7 @@ const (
 	modeQuery   = "query"
 )
 
-type cmdFn func(options, []byte, chan string, chan error)
+type cmdFn func(options, string, []byte, chan string, chan error)
 
 func main() {
 	var opts options
@@ -67,6 +67,7 @@ func main() {
 	// spin up an output worker
 	output := make(chan string)
 	errors := make(chan error)
+	done := make(chan any)
 
 	go func() {
 		for {
@@ -75,6 +76,8 @@ func main() {
 				fmt.Println(out)
 			case err := <-errors:
 				fmt.Fprintf(os.Stderr, "error: %s\n", err)
+			case <-done:
+				break
 			}
 		}
 	}()
@@ -83,6 +86,7 @@ func main() {
 	var modeFn cmdFn
 	modes := map[string]cmdFn{
 		modeURLs: extractURLs,
+		modeTree: printTree,
 	}
 
 	if _, exists := modes[mode]; !exists {
@@ -106,7 +110,7 @@ func main() {
 					continue
 				}
 
-				modeFn(opts, source, output, errors)
+				modeFn(opts, filename, source, output, errors)
 			}
 		}()
 	}
@@ -125,13 +129,8 @@ func main() {
 	close(jobs)
 
 	wg.Wait()
-	/*
-
-		// print just the tree and stop
-		if treeMode {
-			fmt.Printf("%s:\n", filename)
-			jsluice.PrintTree(source)
-		}
-	*/
+	done <- struct{}{}
+	close(output)
+	close(errors)
 
 }
