@@ -26,6 +26,9 @@ type options struct {
 	includeFilename bool
 	resolvePaths    string
 
+	// secrets
+	patternsFile string
+
 	// query
 	query string
 }
@@ -52,8 +55,11 @@ func main() {
 	flag.BoolVar(&opts.includeFilename, "include-filename", false, "Include the filename of the matched file in the output")
 	flag.StringVar(&opts.resolvePaths, "resolve-paths", "", "Resolve relative paths using the absolute URL provided")
 
+	// secrets options
+	flag.StringVarP(&opts.patternsFile, "patterns", "p", "", "JSON file containing user-defined secret patterns to look for")
+
 	// query options
-	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run")
+	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run; e.g. '(string) @matches'")
 
 	flag.Parse()
 
@@ -72,7 +78,7 @@ func main() {
 
 	// spin up an output worker
 	output := make(chan string)
-	errors := make(chan error)
+	errs := make(chan error)
 	done := make(chan any)
 
 	go func() {
@@ -83,7 +89,7 @@ func main() {
 					continue
 				}
 				fmt.Println(out)
-			case err := <-errors:
+			case err := <-errs:
 				fmt.Fprintf(os.Stderr, "error: %s\n", err)
 			case <-done:
 				break
@@ -94,9 +100,10 @@ func main() {
 	// now the process workers
 	var modeFn cmdFn
 	modes := map[string]cmdFn{
-		modeURLs:  extractURLs,
-		modeTree:  printTree,
-		modeQuery: runQuery,
+		modeURLs:    extractURLs,
+		modeSecrets: extractSecrets,
+		modeTree:    printTree,
+		modeQuery:   runQuery,
 	}
 
 	if _, exists := modes[mode]; !exists {
@@ -116,11 +123,11 @@ func main() {
 
 				source, err := ioutil.ReadFile(filename)
 				if err != nil {
-					errors <- err
+					errs <- err
 					continue
 				}
 
-				modeFn(opts, filename, source, output, errors)
+				modeFn(opts, filename, source, output, errs)
 			}
 		}()
 	}
@@ -141,6 +148,6 @@ func main() {
 	wg.Wait()
 	done <- struct{}{}
 	close(output)
-	close(errors)
+	close(errs)
 
 }
