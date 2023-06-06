@@ -8,9 +8,10 @@ import (
 )
 
 type UserPattern struct {
-	Name        string `json:"name"`
-	Pattern     string `json:"pattern"`
-	NamePattern string `json:"namePattern"`
+	Name        string   `json:"name"`
+	Pattern     string   `json:"pattern"`
+	NamePattern string   `json:"namePattern"`
+	Severity    Severity `json:"severity"`
 
 	re     *regexp.Regexp
 	reName *regexp.Regexp
@@ -31,6 +32,10 @@ func (u *UserPattern) ParseRegex() error {
 			return err
 		}
 		u.reName = re
+	}
+
+	if u.Severity == "" {
+		u.Severity = SeverityInfo
 	}
 
 	if u.re == nil && u.reName == nil {
@@ -85,6 +90,7 @@ func (u *UserPattern) pairMatcher() SecretMatcher {
 				"key":   key.RawString(),
 				"value": value.RawString(),
 			},
+			Severity: u.Severity,
 		}
 
 		parent := n.Parent()
@@ -106,10 +112,25 @@ func (u *UserPattern) stringMatcher() SecretMatcher {
 			return nil
 		}
 
-		return &Secret{
-			Kind: u.Name,
-			Data: map[string]string{"match": in},
+		secret := &Secret{
+			Kind:     u.Name,
+			Data:     map[string]string{"match": in},
+			Severity: u.Severity,
 		}
+
+		parent := n.Parent()
+		if parent == nil || parent.Type() != "pair" {
+			return secret
+		}
+
+		grandParent := parent.Parent()
+		if grandParent == nil || grandParent.Type() != "object" {
+			return secret
+		}
+
+		secret.Context = grandParent.AsObject().asMap()
+
+		return secret
 	}}
 }
 

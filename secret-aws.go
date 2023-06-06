@@ -15,7 +15,13 @@ func awsMatcher() SecretMatcher {
 		if len(str) < 16 || len(str) > 128 {
 			return nil
 		}
-		prefixes := []string{"AKIA", "A3T", "AGPA", "AIDA", "AROA", "AIPA", "ANPA", "ANVA", "ASIA"}
+
+		// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
+		prefixes := []string{
+			"ABIA", "ACCA", "AGPA", "AIDA",
+			"AIPA", "AKIA", "ANPA", "ANVA",
+			"APKA", "AROA", "ASCA", "ASIA",
+		}
 
 		found := false
 		for _, p := range prefixes {
@@ -42,9 +48,9 @@ func awsMatcher() SecretMatcher {
 		}
 
 		match := &Secret{
-			Kind:       "AWSAccessKey",
-			LeadWorthy: false,
-			Data:       data,
+			Kind:     "AWSAccessKey",
+			Severity: SeverityLow,
+			Data:     data,
 		}
 
 		// We want to look in the same object for anything 'secret'.
@@ -72,11 +78,15 @@ func awsMatcher() SecretMatcher {
 			}
 		}
 
+		sev := SeverityLow
+		if data.Secret != "" {
+			sev = SeverityHigh
+		}
 		return &Secret{
-			Kind:       "AWSAccessKey",
-			LeadWorthy: data.Secret != "",
-			Data:       data,
-			Context:    o.asMap(),
+			Kind:     "AWSAccessKey",
+			Severity: sev,
+			Data:     data,
+			Context:  o.asMap(),
 		}
 
 	}}

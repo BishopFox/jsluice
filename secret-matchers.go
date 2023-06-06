@@ -8,12 +8,21 @@ import (
 // data found within a JavaScript file. E.g. an AWS access key and
 // secret.
 type Secret struct {
-	Kind       string            `json:"kind"`
-	Data       any               `json:"data"`
-	Filename   string            `json:"filename,omitempty"`
-	LeadWorthy bool              `json:"leadWorthy"`
-	Context    map[string]string `json:"context"`
+	Kind     string            `json:"kind"`
+	Data     any               `json:"data"`
+	Filename string            `json:"filename,omitempty"`
+	Severity Severity          `json:"severity"`
+	Context  map[string]string `json:"context"`
 }
+
+type Severity string
+
+const (
+	SeverityInfo   Severity = "info"
+	SeverityLow    Severity = "low"
+	SeverityMedium Severity = "medium"
+	SeverityHigh   Severity = "high"
+)
 
 // AddSecretMatcher allows custom SecretMatchers to be added to the Analyzer
 func (a *Analyzer) AddSecretMatcher(s SecretMatcher) {

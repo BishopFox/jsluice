@@ -8,6 +8,8 @@ import (
 	"github.com/smacker/go-tree-sitter/javascript"
 )
 
+var ExpressionPlaceholder = "EXPR"
+
 type Node struct {
 	node   *sitter.Node
 	source []byte
@@ -83,7 +85,7 @@ func (n *Node) CollapsedString() string {
 	case "string":
 		return n.RawString()
 	default:
-		return "EXPR"
+		return ExpressionPlaceholder
 	}
 }
 

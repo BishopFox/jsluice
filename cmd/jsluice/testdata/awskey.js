@@ -1,6 +1,8 @@
-var lolWat = {
-    key: "AKIAIOSFODNN7EXAMPLE",
-    secret: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+var config = {
+    bucket: "examplebucket",
+    awsKey: "AKIAIOSFODNN7EXAMPLE",
+    awsSecret: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    server: "someserver.example.com"
 };
 
 var notAKey = {

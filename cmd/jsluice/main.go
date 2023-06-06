@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BishopFox/jsluice"
 	"github.com/pkg/profile"
 	flag "github.com/spf13/pflag"
 )
@@ -19,6 +20,7 @@ type options struct {
 	// global
 	profile     bool
 	concurrency int
+	placeholder string
 
 	// urls
 	includeSource   bool
@@ -48,6 +50,7 @@ func main() {
 	// global options
 	flag.BoolVar(&opts.profile, "profile", false, "Profile CPU usage and save a cpu.pprof file in the current dir")
 	flag.IntVarP(&opts.concurrency, "concurrency", "c", 1, "Number of files to process concurrently")
+	flag.StringVar(&opts.placeholder, "placeholder", "EXPR", "Set the expression placeholder to a custom string")
 
 	// url options
 	flag.BoolVar(&opts.includeSource, "include-source", false, "Include the source code where the URL was found")
@@ -72,6 +75,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: jsluice <mode> [...flags]")
 		os.Exit(1)
 	}
+
+	jsluice.ExpressionPlaceholder = opts.placeholder
 
 	mode := args[0]
 	files := args[1:]

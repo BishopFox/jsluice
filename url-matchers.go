@@ -67,7 +67,7 @@ func (a *Analyzer) GetURLs() []*URL {
 			// and skip them. Maybe this should be optional? Maybe it should
 			// remove things like EXPR#EXPR etc too
 			letters := re.ReplaceAllString(match.URL, "")
-			if strings.ReplaceAll(letters, "EXPR", "") == "" {
+			if strings.ReplaceAll(letters, ExpressionPlaceholder, "") == "" {
 				continue
 			}
 
@@ -83,7 +83,7 @@ func (a *Analyzer) GetURLs() []*URL {
 
 				for p, _ := range u.Query() {
 					// Ignore params that were expressions
-					if p == "EXPR" {
+					if p == ExpressionPlaceholder {
 						continue
 					}
 					match.QueryParams = append(match.QueryParams, p)
@@ -138,6 +138,10 @@ func AllURLMatchers() []URLMatcher {
 		}
 
 		if strings.HasSuffix(name, ".href") {
+			return true
+		}
+
+		if strings.HasSuffix(name, ".src") {
 			return true
 		}
 

@@ -21,9 +21,9 @@ func githubKeyMatcher() SecretMatcher {
 		}
 
 		match := &Secret{
-			Kind:       "githubKey",
-			LeadWorthy: false,
-			Data:       data,
+			Kind:     "githubKey",
+			Severity: SeverityLow,
+			Data:     data,
 		}
 
 		// If the key is in an object we want to include that whole object as context
