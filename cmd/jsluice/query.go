@@ -15,20 +15,13 @@ func runQuery(opts options, filename string, source []byte, output chan string, 
 	buf := &strings.Builder{}
 	enter := func(n *jsluice.Node) {
 		content := n.Content()
-		if opts.decodeStrings && n.Type() == "string" {
-			content = jsluice.DecodeString(content)
-		}
 
 		if opts.rawOutput {
 			fmt.Fprintln(buf, content)
 			return
 		}
 
-		var out any = content
-
-		if n.Type() == "object" {
-			//out = n.AsObject()
-		}
+		out := n.AsGoType()
 
 		b, err := json.Marshal(out)
 		if err != nil {

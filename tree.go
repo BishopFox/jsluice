@@ -2,6 +2,7 @@ package jsluice
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -106,6 +107,98 @@ func (n *Node) IsValid() bool {
 
 func (n *Node) RawString() string {
 	return dequote(n.Content())
+}
+
+func (n *Node) DecodedString() string {
+	return DecodeString(n.Content())
+}
+
+func (n *Node) AsGoType() any {
+	if n == nil {
+		return nil
+	}
+
+	switch n.Type() {
+	case "string":
+		return n.DecodedString()
+	case "number":
+		return n.AsNumber()
+	case "object":
+		return n.AsMap()
+	case "array":
+		return n.AsArray()
+	case "false":
+		return false
+	case "true":
+		return true
+	case "null":
+		return nil
+	default:
+		return n.Content()
+	}
+}
+
+func (n *Node) AsMap() map[string]any {
+	if n.Type() != "object" {
+		return map[string]any{}
+	}
+
+	pairs := n.NamedChildren()
+
+	out := make(map[string]any, len(pairs))
+
+	for _, pair := range pairs {
+		if pair.Type() != "pair" {
+			continue
+		}
+
+		key := DecodeString(pair.ChildByFieldName("key").RawString())
+		value := pair.ChildByFieldName("value").AsGoType()
+
+		out[key] = value
+	}
+	return out
+}
+
+func (n *Node) AsArray() []any {
+	if n.Type() != "array" {
+		return []any{}
+	}
+
+	values := n.NamedChildren()
+
+	out := make([]any, 0, len(values))
+
+	for _, v := range values {
+		out = append(out, v.AsGoType())
+	}
+
+	return out
+}
+
+func (n *Node) AsNumber() any {
+	if n.Type() != "number" {
+		return 0
+	}
+
+	// TODO: handle hex, octal etc
+
+	content := n.Content()
+	if strings.Contains(content, ".") {
+		// float
+		f, err := strconv.ParseFloat(content, 64)
+		if err != nil {
+			return 0
+		}
+		return f
+	}
+
+	// int
+	i, err := strconv.ParseInt(content, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return i
 }
 
 func (n *Node) Parent() *Node {
