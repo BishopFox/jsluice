@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,7 +14,27 @@ func runQuery(opts options, filename string, source []byte, output chan string, 
 
 	buf := &strings.Builder{}
 	enter := func(n *jsluice.Node) {
-		fmt.Fprintln(buf, n.Content())
+		content := n.Content()
+		if opts.decodeStrings && n.Type() == "string" {
+			content = jsluice.DecodeString(content)
+		}
+
+		if opts.rawOutput {
+			fmt.Fprintln(buf, content)
+			return
+		}
+
+		var out any = content
+
+		if n.Type() == "object" {
+			//out = n.AsObject()
+		}
+
+		b, err := json.Marshal(out)
+		if err != nil {
+			return
+		}
+		fmt.Fprintf(buf, "%s\n", b)
 	}
 
 	analyzer.Query(opts.query, enter)

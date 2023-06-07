@@ -32,7 +32,9 @@ type options struct {
 	patternsFile string
 
 	// query
-	query string
+	query         string
+	decodeStrings bool
+	rawOutput     bool
 }
 
 const (
@@ -63,6 +65,8 @@ func main() {
 
 	// query options
 	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run; e.g. '(string) @matches'")
+	flag.BoolVar(&opts.decodeStrings, "decode-strings", false, "Decode strings provided by query output")
+	flag.BoolVar(&opts.rawOutput, "raw-output", false, "Do not JSON-encode query output")
 
 	flag.Parse()
 

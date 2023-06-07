@@ -8,70 +8,113 @@ import (
 )
 
 type UserPattern struct {
-	Name        string   `json:"name"`
-	Pattern     string   `json:"pattern"`
-	NamePattern string   `json:"namePattern"`
-	Severity    Severity `json:"severity"`
+	Name     string   `json:"name"`
+	Key      string   `json:"key"`
+	Value    string   `json:"value"`
+	Severity Severity `json:"severity"`
 
-	re     *regexp.Regexp
-	reName *regexp.Regexp
+	Object []*UserPattern `json:"object"`
+
+	reKey   *regexp.Regexp
+	reValue *regexp.Regexp
 }
 
 func (u *UserPattern) ParseRegex() error {
-	if u.Pattern != "" {
-		re, err := regexp.Compile(u.Pattern)
+	if u.Value != "" {
+		re, err := regexp.Compile(u.Value)
 		if err != nil {
 			return err
 		}
-		u.re = re
+		u.reValue = re
 	}
 
-	if u.NamePattern != "" {
-		re, err := regexp.Compile(u.NamePattern)
+	if u.Key != "" {
+		re, err := regexp.Compile(u.Key)
 		if err != nil {
 			return err
 		}
-		u.reName = re
+		u.reKey = re
+	}
+
+	if len(u.Object) > 0 {
+		for _, m := range u.Object {
+			m.ParseRegex()
+		}
 	}
 
 	if u.Severity == "" {
 		u.Severity = SeverityInfo
 	}
 
-	if u.re == nil && u.reName == nil {
-		return errors.New("pattern, namePattern, or both must be supplied in user-defined matcher")
+	if u.reValue == nil && u.reKey == nil && len(u.Object) == 0 {
+		return errors.New("'key', 'value', both, or 'object' must be supplied in user-defined matcher")
 	}
 
 	return nil
 }
 
-func (u *UserPattern) Match(in string) bool {
-	if u.re == nil {
+func (u *UserPattern) MatchValue(in string) bool {
+	if u.reValue == nil {
 		return true
 	}
-	return u.re.MatchString(in)
+	return u.reValue.MatchString(in)
 }
 
-func (u *UserPattern) MatchName(in string) bool {
-	if u.reName == nil {
+func (u *UserPattern) MatchKey(in string) bool {
+	if u.reKey == nil {
 		return true
 	}
-	return u.reName.MatchString(in)
+	return u.reKey.MatchString(in)
 }
 
 func (u *UserPattern) SecretMatcher() SecretMatcher {
-	if u.reName != nil {
+	if len(u.Object) > 0 {
+		return u.objectMatcher()
+	}
+
+	if u.reKey != nil {
 		return u.pairMatcher()
 	}
 
 	return u.stringMatcher()
 }
 
+func (u *UserPattern) objectMatcher() SecretMatcher {
+	return SecretMatcher{"(object) @matches", func(n *Node) *Secret {
+		pairs := n.NamedChildren()
+
+		matched := 0
+
+		for _, pat := range u.Object {
+			matcher := pat.pairMatcher()
+
+			for _, pair := range pairs {
+				if matcher.Fn(pair) != nil {
+					matched++
+					break
+				}
+			}
+		}
+
+		if matched != len(u.Object) {
+			return nil
+		}
+
+		secret := &Secret{
+			Kind:     u.Name,
+			Data:     n.AsObject().asMap(),
+			Severity: u.Severity,
+		}
+
+		return secret
+	}}
+}
+
 func (u *UserPattern) pairMatcher() SecretMatcher {
 	return SecretMatcher{"(pair) @matches", func(n *Node) *Secret {
 
 		key := n.ChildByFieldName("key")
-		if key == nil || !u.MatchName(key.RawString()) {
+		if key == nil || !u.MatchKey(key.RawString()) {
 			return nil
 		}
 
@@ -80,7 +123,7 @@ func (u *UserPattern) pairMatcher() SecretMatcher {
 			return nil
 		}
 
-		if !u.Match(value.RawString()) {
+		if !u.MatchValue(value.RawString()) {
 			return nil
 		}
 
@@ -108,7 +151,7 @@ func (u *UserPattern) pairMatcher() SecretMatcher {
 func (u *UserPattern) stringMatcher() SecretMatcher {
 	return SecretMatcher{"(string) @matches", func(n *Node) *Secret {
 		in := n.RawString()
-		if !u.Match(in) {
+		if !u.MatchValue(in) {
 			return nil
 		}
 

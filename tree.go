@@ -61,6 +61,17 @@ func (n *Node) NamedChildCount() int {
 	return int(n.node.NamedChildCount())
 }
 
+func (n *Node) NamedChildren() []*Node {
+	count := n.NamedChildCount()
+	out := make([]*Node, 0, count)
+
+	for i := 0; i < count; i++ {
+		out = append(out, n.NamedChild(i))
+	}
+
+	return out
+}
+
 // CollapsedString takes a node representing a URL and attempts to make it
 // at least somewhat easily parseable. It's common to build URLs out
 // of variables and function calls so we want to turn something like:
@@ -172,6 +183,7 @@ func PrintTree(source []byte) string {
 	return getTree(root, source)
 }
 
+// TODO: provide a way to print the tree as a JSON object?
 func getTree(n *sitter.Node, source []byte) string {
 
 	out := &strings.Builder{}
