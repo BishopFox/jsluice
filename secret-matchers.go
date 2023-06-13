@@ -4,9 +4,8 @@ import (
 	"strings"
 )
 
-// A Secret represents any bit of secret or otherwise interesting
-// data found within a JavaScript file. E.g. an AWS access key and
-// secret.
+// A Secret represents any secret or otherwise interesting data
+// found within a JavaScript file. E.g. an AWS access key.
 type Secret struct {
 	Kind     string            `json:"kind"`
 	Data     any               `json:"data"`
@@ -15,6 +14,7 @@ type Secret struct {
 	Context  map[string]string `json:"context"`
 }
 
+// Severity indicates how serious a finding is
 type Severity string
 
 const (

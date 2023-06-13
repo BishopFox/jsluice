@@ -7,6 +7,10 @@ import (
 	"regexp"
 )
 
+// A UserPattern represents a pattern that was provided by a
+// when using the command-line tool. When using the package
+// directly, a SecretMatcher can be created directly instead
+// of creating a UserPattern
 type UserPattern struct {
 	Name     string   `json:"name"`
 	Key      string   `json:"key"`
@@ -19,6 +23,8 @@ type UserPattern struct {
 	reValue *regexp.Regexp
 }
 
+// ParseRegex parses all of the user-provided regular expressions
+// for a pattern into Go *regexp.Regexp types
 func (u *UserPattern) ParseRegex() error {
 	if u.Value != "" {
 		re, err := regexp.Compile(u.Value)
@@ -53,6 +59,8 @@ func (u *UserPattern) ParseRegex() error {
 	return nil
 }
 
+// MatchValue returns true if a pattern's value regex matches
+// the supplied value, or if there is no value regex.
 func (u *UserPattern) MatchValue(in string) bool {
 	if u.reValue == nil {
 		return true
@@ -60,6 +68,8 @@ func (u *UserPattern) MatchValue(in string) bool {
 	return u.reValue.MatchString(in)
 }
 
+// MatchKey returns true if a pattern's key regex matches
+// the supplied value, or if there is no key regex
 func (u *UserPattern) MatchKey(in string) bool {
 	if u.reKey == nil {
 		return true
@@ -67,6 +77,8 @@ func (u *UserPattern) MatchKey(in string) bool {
 	return u.reKey.MatchString(in)
 }
 
+// SecretMatcher returns a SecretMatcher based on the UserPattern,
+// for use with (*Analyzer).AddSecretMatcher()
 func (u *UserPattern) SecretMatcher() SecretMatcher {
 	if len(u.Object) > 0 {
 		return u.objectMatcher()
@@ -79,6 +91,7 @@ func (u *UserPattern) SecretMatcher() SecretMatcher {
 	return u.stringMatcher()
 }
 
+// objectMatcher returns a SecretMatcher for matching against objects
 func (u *UserPattern) objectMatcher() SecretMatcher {
 	return SecretMatcher{"(object) @matches", func(n *Node) *Secret {
 		pairs := n.NamedChildren()
@@ -110,6 +123,7 @@ func (u *UserPattern) objectMatcher() SecretMatcher {
 	}}
 }
 
+// pairMatcher returns a SecretMatcher for matching against key/value pairs
 func (u *UserPattern) pairMatcher() SecretMatcher {
 	return SecretMatcher{"(pair) @matches", func(n *Node) *Secret {
 
@@ -148,6 +162,7 @@ func (u *UserPattern) pairMatcher() SecretMatcher {
 	}}
 }
 
+// stringMatcher returns a SecretMatcher for matching against string literals
 func (u *UserPattern) stringMatcher() SecretMatcher {
 	return SecretMatcher{"(string) @matches", func(n *Node) *Secret {
 		in := n.RawString()
@@ -177,8 +192,11 @@ func (u *UserPattern) stringMatcher() SecretMatcher {
 	}}
 }
 
+// UserPatterns is an alias for a slice of *UserPattern
 type UserPatterns []*UserPattern
 
+// SecretMatchers returns a slice of SecretMatcher for use with
+// (*Analyzer).AddSecretMatchers()
 func (u UserPatterns) SecretMatchers() []SecretMatcher {
 	out := make([]SecretMatcher, 0)
 
@@ -188,6 +206,9 @@ func (u UserPatterns) SecretMatchers() []SecretMatcher {
 	return out
 }
 
+// ParseUserPatterns accepts an io.Reader pointing to a JSON user-pattern
+// definition file, and returns a list of UserPatterns, and any error that
+// occurred.
 func ParseUserPatterns(r io.Reader) (UserPatterns, error) {
 	out := make(UserPatterns, 0)
 
