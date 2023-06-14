@@ -1,7 +1,21 @@
 # jsluice
 
-A Go package for extracting URLs, secrets, and other interesting data from JavaScript.
+`jsluice` is a Go package and [command-line tool](/cmd/jsluice/) for extracting URLs, paths, secrets,
+and other interesting data from JavaScript source code.
 
+## Install
+
+To install the command-line tool, run:
+
+```
+▶ go install github.com/BishopFox/jsluice/cmd/jsluice@latest
+```
+
+To add the package to your project, run:
+
+```
+▶ go get github.com/BishopFox/jsluice
+```
 
 ## Extracting URLs
 
@@ -72,3 +86,61 @@ parameter:
 ▶ echo $JS | grep -oE 'document\.location = "[^"]+"'
 document.location = "/login?redirect="
 ```
+
+### Custom URL Matchers
+
+`jsluice` comes with some built-in URL matchers for common scenarios, but you can easily add more
+with the `AddURLMatcher` function:
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/BishopFox/jsluice"
+)
+
+func main() {
+	analyzer := jsluice.NewAnalyzer([]byte(`
+		var fn = () => {
+			var meta = {
+				contact: "mailto:contact@example.com",
+				home: "https://example.com"
+			}
+			return meta
+		}
+	`))
+
+	analyzer.AddURLMatcher(
+		jsluice.URLMatcher{"string", func(n *jsluice.Node) *jsluice.URL {
+			val := n.DecodedString()
+			if !strings.HasPrefix(val, "mailto:") {
+				return nil
+			}
+
+			return &jsluice.URL{
+				URL:  val,
+				Type: "mailto",
+			}
+		}},
+	)
+
+	for _, match := range analyzer.GetURLs() {
+		fmt.Println(match.URL)
+	}
+}
+```
+
+There's a copy of this example [here](/examples/urlmatcher/main.go). You can run it like this:
+
+```
+▶ go run examples/urlmatcher/main.go
+mailto:contact@example.com
+https://example.com
+```
+
+`jsluice` doesn't match `mailto:` URIs by default, it was found by the custom `URLMatcher`.
+
+

@@ -21,6 +21,11 @@ func NewAnalyzer(source []byte) *Analyzer {
 	parser.SetLanguage(javascript.GetLanguage())
 	tree := parser.Parse(nil, source)
 
+	// TODO: Align how URLMatcher and SecretMatcher slices
+	// are loaded. At the moment we load URLMatchers now,
+	// and SecretMatchers only when GetSecrets is called.
+	// This is mostly because URL matching was written first,
+	// and then secret matching was added later.
 	return &Analyzer{
 		urlMatchers: AllURLMatchers(),
 		rootNode:    NewNode(tree.RootNode(), source),

@@ -122,6 +122,21 @@ type URLMatcher struct {
 	Fn   func(*Node) *URL
 }
 
+// AddURLMatcher allows custom URLMatchers to be added to the Analyzer
+func (a *Analyzer) AddURLMatcher(u URLMatcher) {
+	if a.urlMatchers == nil {
+		a.urlMatchers = make([]URLMatcher, 0)
+	}
+
+	a.urlMatchers = append(a.urlMatchers, u)
+}
+
+// DisableDefaultURLMatchers disables the default URLMatchers, so that
+// only user-added URLMatchers are used.
+func (a *Analyzer) DisableDefaultURLMatchers() {
+	a.urlMatchers = make([]URLMatcher, 0)
+}
+
 // AllURLMatchers returns the detault list of URLMatchers
 func AllURLMatchers() []URLMatcher {
 
@@ -169,7 +184,7 @@ func AllURLMatchers() []URLMatcher {
 			}
 
 			// We want to find values that at least *start* with a string of some kind.
-			// This might be kind of useful to the crawler:
+			// This might be kind of useful to crawlers etc:
 			//
 			//   location.href = "/somePath/" + someVar;
 			//
