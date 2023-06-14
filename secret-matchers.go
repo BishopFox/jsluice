@@ -7,11 +7,11 @@ import (
 // A Secret represents any secret or otherwise interesting data
 // found within a JavaScript file. E.g. an AWS access key.
 type Secret struct {
-	Kind     string            `json:"kind"`
-	Data     any               `json:"data"`
-	Filename string            `json:"filename,omitempty"`
-	Severity Severity          `json:"severity"`
-	Context  map[string]string `json:"context"`
+	Kind     string   `json:"kind"`
+	Data     any      `json:"data"`
+	Filename string   `json:"filename,omitempty"`
+	Severity Severity `json:"severity"`
+	Context  any      `json:"context"`
 }
 
 // Severity indicates how serious a finding is

@@ -25,30 +25,19 @@ such as being assigned to `document.location`, passed to `window.open()`, or pas
 A simple example program is provided [here](/examples/basic/main.go):
 
 ```go
-package main
+analyzer := jsluice.NewAnalyzer([]byte(`
+    const login = (redirect) => {
+        document.location = "/login?redirect=" + redirect + "&method=oauth"
+    }
+`))
 
-import (
-	"encoding/json"
-	"fmt"
+for _, url := range analyzer.GetURLs() {
+    j, err := json.MarshalIndent(url, "", "  ")
+    if err != nil {
+        continue
+    }
 
-	"github.com/BishopFox/jsluice"
-)
-
-func main() {
-	analyzer := jsluice.NewAnalyzer([]byte(`
-		const login = (redirect) => {
-			document.location = "/login?redirect=" + redirect + "&method=oauth"
-		}
-	`))
-
-	for _, url := range analyzer.GetURLs() {
-		j, err := json.MarshalIndent(url, "", "  ")
-		if err != nil {
-			continue
-		}
-
-		fmt.Printf("%s\n", j)
-	}
+    fmt.Printf("%s\n", j)
 }
 ```
 
@@ -89,47 +78,38 @@ document.location = "/login?redirect="
 
 ### Custom URL Matchers
 
-`jsluice` comes with some built-in URL matchers for common scenarios, but you can easily add more
+`jsluice` comes with some built-in URL matchers for common scenarios, but you can add more
 with the `AddURLMatcher` function:
 
 ```go
-package main
+analyzer := jsluice.NewAnalyzer([]byte(`
+    var fn = () => {
+        var meta = {
+            contact: "mailto:contact@example.com",
+            home: "https://example.com"
+        }
+        return meta
+    }
+`))
 
-import (
-	"fmt"
-	"strings"
+analyzer.AddURLMatcher(
+    // The first value in the jsluice.URLMatcher struct is the type of node to look for.
+    // It can be one of "string", "assignment_expression", or "call_expression"
+    jsluice.URLMatcher{"string", func(n *jsluice.Node) *jsluice.URL {
+        val := n.DecodedString()
+        if !strings.HasPrefix(val, "mailto:") {
+            return nil
+        }
 
-	"github.com/BishopFox/jsluice"
+        return &jsluice.URL{
+            URL:  val,
+            Type: "mailto",
+        }
+    }},
 )
 
-func main() {
-	analyzer := jsluice.NewAnalyzer([]byte(`
-		var fn = () => {
-			var meta = {
-				contact: "mailto:contact@example.com",
-				home: "https://example.com"
-			}
-			return meta
-		}
-	`))
-
-	analyzer.AddURLMatcher(
-		jsluice.URLMatcher{"string", func(n *jsluice.Node) *jsluice.URL {
-			val := n.DecodedString()
-			if !strings.HasPrefix(val, "mailto:") {
-				return nil
-			}
-
-			return &jsluice.URL{
-				URL:  val,
-				Type: "mailto",
-			}
-		}},
-	)
-
-	for _, match := range analyzer.GetURLs() {
-		fmt.Println(match.URL)
-	}
+for _, match := range analyzer.GetURLs() {
+    fmt.Println(match.URL)
 }
 ```
 
@@ -144,3 +124,53 @@ https://example.com
 `jsluice` doesn't match `mailto:` URIs by default, it was found by the custom `URLMatcher`.
 
 
+## Extracting Secrets
+
+As well as URLs, `jsluice` can extract secrets. As with URL extraction, custom matchers can
+be supplied to supplement the default matchers. There's a short example program [here](/examples/secrets/main.go)
+that does just that:
+
+```go
+analyzer := jsluice.NewAnalyzer([]byte(`
+    var config = {
+        apiKey: "AUTH_1a2b3c4d5e6f",
+        apiURL: "https://api.example.com/v2/"
+    }
+`))
+
+analyzer.AddSecretMatcher(
+    // The first value in the jsluice.SecretMatcher struct is a
+    // tree-sitter query to run on the JavaScript source.
+    jsluice.SecretMatcher{"(pair) @match", func(n *jsluice.Node) *jsluice.Secret {
+        key := n.ChildByFieldName("key").DecodedString()
+        value := n.ChildByFieldName("value").DecodedString()
+
+        if !strings.Contains(key, "api") {
+            return nil
+        }
+
+        if !strings.HasPrefix(value, "AUTH_") {
+            return nil
+        }
+
+        return &jsluice.Secret{
+            Kind: "fakeApi",
+            Data: map[string]string{
+                "key":   key,
+                "value": value,
+            },
+            Severity: jsluice.SeverityLow,
+            Context:  n.Parent().AsMap(),
+        }
+    }},
+)
+
+for _, match := range analyzer.GetSecrets() {
+    j, err := json.MarshalIndent(match, "", "  ")
+    if err != nil {
+        continue
+    }
+
+    fmt.Printf("%s\n", j)
+}
+```

@@ -7,8 +7,8 @@ import (
 
 func TestParseUserPatterns(t *testing.T) {
 	testData := strings.NewReader(`[
-		{"name": "httpAuth", "pattern": "/[a-z0-9_/\\.:-]+@[a-z0-9-]+\\.[a-z0-9.-]+"},
-		{"name": "base64", "pattern": "^(eyJ|YTo|Tzo|PD[89]|aHR0cHM6L|aHR0cDo|rO0)[%a-zA-Z0-9+/]+={0,2}"}
+		{"name": "httpAuth", "value": "/[a-z0-9_/\\.:-]+@[a-z0-9-]+\\.[a-z0-9.-]+"},
+		{"name": "base64", "value": "^(eyJ|YTo|Tzo|PD[89]|aHR0cHM6L|aHR0cDo|rO0)[%a-zA-Z0-9+/]+={0,2}"}
 	]`)
 
 	patterns, err := ParseUserPatterns(testData)
@@ -35,10 +35,10 @@ func TestParseUserPatterns(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		if patterns[c.i].Match(c.in) != c.expected {
+		if patterns[c.i].MatchValue(c.in) != c.expected {
 			t.Errorf(
-				"Want %t for (%s).Match(%s); have %t",
-				c.expected, patterns[c.i].Pattern, c.in, !c.expected,
+				"Want %t for (%s).MatchValue(%s); have %t",
+				c.expected, patterns[c.i].reValue, c.in, !c.expected,
 			)
 		}
 	}
