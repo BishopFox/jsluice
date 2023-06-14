@@ -5,7 +5,7 @@ and other interesting data from JavaScript source code.
 
 If want to get started as quickly as possible, you probably want to look at the [command-line tool](/cmd/jsluice/).
 
-If you want to integrate `jsluice`'s capabilities with you own project then keep reading. You might also want to
+If you want to integrate `jsluice`'s capabilities with your own project then keep reading. You might also want to
 look at the [examples](/examples/), and read the [package documentation](https://pkg.go.dev/github.com/BishopFox/jsluice).
 
 ## Install
