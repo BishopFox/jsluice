@@ -3,6 +3,11 @@
 `jsluice` is a Go package and [command-line tool](/cmd/jsluice/) for extracting URLs, paths, secrets,
 and other interesting data from JavaScript source code.
 
+If want to get started as quickly as possible, you probably want to look at the [command-line tool](/cmd/jsluice/).
+
+If you want to integrate `jsluice`'s capabilities with you own project then keep reading. You might also want to
+look at the [examples](/examples/), and read the [package documentation](https://pkg.go.dev/github.com/BishopFox/jsluice).
+
 ## Install
 
 To install the command-line tool, run:
@@ -174,3 +179,26 @@ for _, match := range analyzer.GetSecrets() {
     fmt.Printf("%s\n", j)
 }
 ```
+
+Running the example:
+
+```
+▶ go run examples/secrets/main.go
+[2023-06-14T13:04:16+0100]
+{
+  "kind": "fakeApi",
+  "data": {
+    "key": "apiKey",
+    "value": "AUTH_1a2b3c4d5e6f"
+  },
+  "severity": "low",
+  "context": {
+    "apiKey": "AUTH_1a2b3c4d5e6f",
+    "apiURL": "https://api.example.com/v2/"
+  }
+}
+```
+
+Because we have a syntax tree available for the entire JavaScript source,
+it was possible to inspect both the `key` and `value`, and also to easily
+provide the parent object as context for the match.
