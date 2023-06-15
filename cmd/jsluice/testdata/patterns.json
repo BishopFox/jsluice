@@ -9,14 +9,14 @@
         "key": "(secret|private|apikey)",
         "value": "[%a-zA-Z0-9+/]+"
     },
-	{
-		"name": "firebaseConfig",
-		"severity": "high",
-		"object": [
-			{"key": "apiKey", "value": "^AIza.+"},
-			{"key": "authDomain"},
-			{"key": "projectId"},
-			{"key": "storageBucket"}
-		]
-	}
+    {
+        "name": "firebaseConfig",
+        "severity": "high",
+        "object": [
+            {"key": "apiKey", "value": "^AIza.+"},
+            {"key": "authDomain"},
+            {"key": "projectId"},
+            {"key": "storageBucket"}
+        ]
+    }
 ]

@@ -40,6 +40,9 @@ of expressions like this are replaced with `EXPR` by default, but that can be ch
 * [Installation](#install)
 * [Usage](#usage)
     * [Extracting URLs](#extracting-urls)
+        * [Resolving Relative Paths](#resolving-relative-paths)
+        * [Including Original Source](#including-original-source)
+    * [Extracting Secrets](#extracting-secrets)
     * [Getting help](#help)
 
 ## Install
@@ -150,7 +153,7 @@ document.location = '../../guestbook.html'
 }
 ```
 
-#### Including Original Souce
+#### Including Original Source
 
 Sometimes it's useful to be able to see the complete source code that a URL was extracted from.
 Using the `-S`/`--include-source` flag adds a `source` field to the results containing that source code:
@@ -166,6 +169,151 @@ Using the `-S`/`--include-source` flag adds a `source` field to the results cont
   "source": "document.location = '../../guestbook.html'",
   "filename": "testdata/relative-location.js"
 }
+```
+
+### Extracting Secrets
+
+The `secrets` mode is for extracting API keys, passwords, and other interesting bits of data.
+
+There are built-in extractors for:
+
+* AWS keys
+* GCP keys
+* GitHub keys
+* Firebase configurations
+
+That's not very many, so you can supply your own in a file specified with the `-p`/`--patterns` flag.
+
+Here's an example of some JavaScript that contains an AWS key:
+
+```javascript
+var config = {
+    bucket: "examplebucket",
+    awsKey: "AKIAIOSFODNN7EXAMPLE",
+    awsSecret: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    server: "someserver.example.com"
+};
+```
+
+And the output of `jsluice secrets` when run against that file:
+
+```
+▶ jsluice secrets awskey.js | jq
+{
+  "kind": "AWSAccessKey",
+  "data": {
+    "key": "AKIAIOSFODNN7EXAMPLE",
+    "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  },
+  "filename": "awskey.js",
+  "severity": "high",
+  "context": {
+    "awsKey": "AKIAIOSFODNN7EXAMPLE",
+    "awsSecret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "bucket": "examplebucket",
+    "server": "someserver.example.com"
+  }
+}
+```
+
+The key and associated secret are put in the `data` field with predictable names to ease
+the automation of, for example, checking the validity of found secrets.
+
+The entire object in which the secret was found is included in the `content` field.
+
+#### Custom Secret Matchers
+
+A JSON file containing an array of pattern objects can be supplied using the `-p`/`--patterns` flag.
+
+Here's an example of a basic patterns file:
+
+```json
+[ 
+  { 
+    "name": "base64", 
+    "value": "(eyJ|YTo|Tzo|PD[89]|rO0)[%a-zA-Z0-9+/]+={0,2}", 
+    "severity": "low" 
+  }, 
+  { 
+    "name": "genericSecret", 
+    "key": "(secret|private|key)", 
+    "value": "[%a-zA-Z0-9+/]+" 
+  },
+  {
+    "name": "firebaseConfig",
+    "severity": "high",
+    "object": [
+      {"key": "apiKey", "value": "^AIza.+"},
+      {"key": "authDomain"},
+      {"key": "projectId"},
+      {"key": "storageBucket"}
+    ]
+  }
+] 
+```
+
+Each pattern can have the following fields:
+
+* `name` which is used in the output
+* `severity`, which should be one of `info`, `low`, `medium`, or `high`
+* `value`, a regular expression to match against string values
+* `key`, a regular expression to match against key names
+* `object`, an array of patterns to match against the keys and values of an entire object
+
+All regular expressions use the [Go regex syntax](https://pkg.go.dev/regexp/syntax).
+
+Here's a, somewhat silly, example JavaScript file to run the patterns file against:
+
+```javascript
+function getConfig(){ 
+    let config = { 
+        randomStr: "abc123xyz256", 
+        secret: "I quite like PHP", 
+    } 
+    return "eyJsb2wiOiAic29tZSBKU09OISIsICJjb3VudCI6IDEyM30K" 
+} 
+```
+
+Running `jsluice secrets` using the above patterns file (saved as `patterns.json`):
+
+```
+▶ jsluice secrets -p patterns.json simple-b64.js | jq
+{
+  "kind": "base64",
+  "data": {
+    "match": "eyJsb2wiOiAic29tZSBKU09OISIsICJjb3VudCI6IDEyM30K"
+  },
+  "filename": "simple-b64.js",
+  "severity": "low",
+  "context": null
+}
+{
+  "kind": "genericSecret",
+  "data": {
+    "key": "secret",
+    "value": "I quite like PHP"
+  },
+  "filename": "simple-b64.js",
+  "severity": "info",
+  "context": {
+    "randomStr": "abc123xyz256",
+    "secret": "I quite like PHP"
+  }
+}
+```
+
+Note that the `base64` matcher worked as expected, but the `genericSecret` matcher
+returned a rather different sort of secret than expected. That's because the regular
+expression lacks [anchors](https://www.regular-expressions.info/anchors.html):
+
+```
+[%a-zA-Z0-9+/]+
+```
+
+If you wanted the match against all of the value, the regex could be changed to:
+
+```
+^[%a-zA-Z0-9+/]+$
 ```
 
 ### Help
