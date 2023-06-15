@@ -26,9 +26,7 @@ func extractURLs(opts options, filename string, source []byte, output chan strin
 			continue
 		}
 
-		if opts.includeFilename {
-			m.Filename = filename
-		}
+		m.Filename = filename
 
 		// remove any souce if we don't want to display it
 		if !opts.includeSource {

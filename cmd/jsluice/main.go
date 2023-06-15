@@ -21,12 +21,12 @@ type options struct {
 	profile     bool
 	concurrency int
 	placeholder string
+	help        bool
 
 	// urls
-	includeSource   bool
-	ignoreStrings   bool
-	includeFilename bool
-	resolvePaths    string
+	includeSource bool
+	ignoreStrings bool
+	resolvePaths  string
 
 	// secrets
 	patternsFile string
@@ -45,28 +45,72 @@ const (
 
 type cmdFn func(options, string, []byte, chan string, chan error)
 
+func init() {
+	flag.Usage = func() {
+		lines := []string{
+			"jsluice - Extract URLs, paths, and secrets from JavaScript files",
+			"",
+			"Usage:",
+			"  jsluice <mode> [options] [file...]",
+			"",
+			"Modes:",
+			"  urls      Extract URLs and paths",
+			"  secrets   Extract secrets and other interesting bits",
+			"  tree      Print syntax trees for input files",
+			"  query     Run tree-sitter a query against input files",
+			"",
+			"Global options:",
+			"  -c, --concurrency int        Number of files to process concurrently (default 1)",
+			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
+			"",
+			"URLs mode:",
+			"  -I, --ignore-strings         Ignore matches from string literals",
+			"  -S, --include-source         Include the source code where the URL was found",
+			"  -R, --resolve-paths <url>    Resolve relative paths using the absolute URL provided",
+			"",
+			"Secrets mode:",
+			"  -p, --patterns <file>        JSON file containing user-defined secret patterns to look for",
+			"",
+			"Query mode:",
+			"  -q, --query <query>          Tree sitter query to run; e.g. '(string) @matches'",
+			"  -r, --raw-output             Do not JSON-encode query output",
+			"",
+			"Examples:",
+			"  jsluice urls example.js",
+			"  jsluice query -q '(object) @m' one.js two.js",
+			"  find . -name *.js' | jsluice secrets -c 5 --patterns=apikeys.json",
+		}
+		fmt.Fprintf(os.Stderr, "%s\n", strings.Join(lines, "\n"))
+	}
+}
+
 func main() {
 	var opts options
 
 	// global options
 	flag.BoolVar(&opts.profile, "profile", false, "Profile CPU usage and save a cpu.pprof file in the current dir")
 	flag.IntVarP(&opts.concurrency, "concurrency", "c", 1, "Number of files to process concurrently")
-	flag.StringVar(&opts.placeholder, "placeholder", "EXPR", "Set the expression placeholder to a custom string")
+	flag.StringVarP(&opts.placeholder, "placeholder", "P", "EXPR", "Set the expression placeholder to a custom string")
+	flag.BoolVarP(&opts.help, "help", "h", false, "")
 
 	// url options
-	flag.BoolVar(&opts.includeSource, "include-source", false, "Include the source code where the URL was found")
-	flag.BoolVar(&opts.ignoreStrings, "ignore-strings", false, "Ignore matches from string literals")
-	flag.BoolVar(&opts.includeFilename, "include-filename", false, "Include the filename of the matched file in the output")
-	flag.StringVar(&opts.resolvePaths, "resolve-paths", "", "Resolve relative paths using the absolute URL provided")
+	flag.BoolVarP(&opts.includeSource, "include-source", "S", false, "Include the source code where the URL was found")
+	flag.BoolVarP(&opts.ignoreStrings, "ignore-strings", "I", false, "Ignore matches from string literals")
+	flag.StringVarP(&opts.resolvePaths, "resolve-paths", "R", "", "Resolve relative paths using the absolute URL provided")
 
 	// secrets options
 	flag.StringVarP(&opts.patternsFile, "patterns", "p", "", "JSON file containing user-defined secret patterns to look for")
 
 	// query options
 	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run; e.g. '(string) @matches'")
-	flag.BoolVar(&opts.rawOutput, "raw-output", false, "Do not JSON-encode query output")
+	flag.BoolVarP(&opts.rawOutput, "raw-output", "r", false, "Do not JSON-encode query output")
 
 	flag.Parse()
+
+	if opts.help {
+		flag.Usage()
+		return
+	}
 
 	if opts.profile {
 		defer profile.Start(profile.ProfilePath(".")).Stop()
