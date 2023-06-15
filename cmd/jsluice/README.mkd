@@ -3,23 +3,81 @@
 The `jsluice` command-line tool extracts URLs, paths, secrets, and other interesting bits
 from JavaScript files.
 
-It has four modes:
-* urls - for extracting URLs and paths
-* secrets - for finding secrets and so on
-* tree - for printing syntax trees
-* query - for running tree-sitter queries
+Values are extracted based not just on how they *look*, but also based on how they are *used*.  
+
+That means `jsluice` can find the path in this code:
+
+```javascript
+fetch('/api/users?id=' + userId + '&format=json', {
+  method: "GET",
+  headers: {
+    "X-Env": "stage"
+  }
+})
+```
+
+But also the method, and headers:
+
+```
+▶ jsluice urls demo.js | jq
+{
+  "url": "/api/users?id=EXPR&format=json",
+  "queryParams": ["id", "format"],
+  "method": "GET",
+  "headers": {
+    "X-Env": "stage"
+  },
+  "type": "fetch"
+}
+```
+
+Because `jsluice` is doing [static analysis](https://en.wikipedia.org/wiki/Static_program_analysis) it
+can't know the value of that `userId` variable, but it *does* understand string concatenation. The value
+of expressions like this are replaced with `EXPR` by default, but that can be changed with the
+`-P`/`--placeholder` flag.
 
 ## Install
 
 To install `jsluice` you need [Go](https://go.dev/doc/install).
 
-Once Go is installed an configured  run:
+Once Go is installed and configured, run:
 
 ```
 ▶ go install github.com/BishopFox/jsluice/cmd/jsluice@latest
 ```
 
-If everything worked correctly, you should be able to run `jsluice --help`:
+If everything worked correctly, you should be able to run `jsluice --help` and
+see the [help output](#help).
+
+
+## Usage
+
+Provide `jsluice` with a mode, any options, and a list of JavaScript files:
+
+```
+jsluice <mode> [options] [file...]
+```
+
+You can also provide files one-per-line on `stdin`:
+
+```
+find . -name '*.js' | jsluice <mode> [options]
+```
+
+`jsluice` has four modes:
+* `urls` - for extracting URLs and paths
+* `secrets` - for finding secrets and so on
+* `tree` - for printing syntax trees
+* `query` - for running tree-sitter queries
+
+### Extracting URLs
+
+In `urls` mode, `jsluice` extracts URLs, paths,
+
+
+### Help
+
+You can see the `jsluice` help output with the `-h`/`--help` flag.
 
 ```
 ▶ jsluice --help
