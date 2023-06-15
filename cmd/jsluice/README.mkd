@@ -43,6 +43,9 @@ of expressions like this are replaced with `EXPR` by default, but that can be ch
         * [Resolving Relative Paths](#resolving-relative-paths)
         * [Including Original Source](#including-original-source)
     * [Extracting Secrets](#extracting-secrets)
+        * [Custom Secret Matchers](#custom-secret-matchers)
+    * [Printing Syntax Trees](#printing-syntax-trees)
+    * [Running Queries](#running-queries)
     * [Getting help](#help)
 
 ## Install
@@ -254,7 +257,7 @@ Here's an example of a basic patterns file:
 
 Each pattern can have the following fields:
 
-* `name` which is used in the output
+* `name`, which is used in the output
 * `severity`, which should be one of `info`, `low`, `medium`, or `high`
 * `value`, a regular expression to match against string values
 * `key`, a regular expression to match against key names
@@ -315,6 +318,98 @@ If you wanted the match against all of the value, the regex could be changed to:
 ```
 ^[%a-zA-Z0-9+/]+$
 ```
+
+### Printing Syntax Trees
+
+The `tree` mode prints a textual represenation of the syntax tree for each JavaScript file.
+This is especially helpful when [writing queries](#running-queries).
+
+The output can be quite long, so here's a tiny example program:
+
+```javascript
+console.log("Hello, world!")
+```
+
+And the output of `jsluice tree`:
+
+```
+▶ jsluice tree hello.js
+hello.js:
+program
+  expression_statement
+    call_expression
+      function: member_expression
+        object: identifier (console)
+        property: property_identifier (log)
+      arguments: arguments
+        string ("Hello, world!")
+```
+
+### Running Queries
+
+The `query` mode lets you run [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) queries against JavaScript files.
+The query syntax is fully documented [here on the Tree-sitter project site](https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax).
+
+Just about the most simple query you could run extracts all of the string literals from the input files.
+
+Here's an example file to try it with:
+
+```javascript
+const config = {
+    stage: false,
+    server: "example.com",
+    ttl: 3600,
+    dns: ["1.1.1.1", "8.8.8.8"],
+    paths: {
+        "home": "/",
+        "blog": "/blog"
+    }
+}
+```
+
+And how to run the query:
+
+```
+▶ jsluice query -q '(string) @str' config.js
+"example.com"
+"1.1.1.1"
+"8.8.8.8"
+"home"
+"/"
+"blog"
+"/blog"
+```
+
+The `@str` part of the query identifies which part of the query should be extracted.
+In this case there is only one thing to match in the query, but it is still required.
+
+`jsluice` tries to make the output valid JSONL where possible, and because it understands
+objects, arrays, strings, etc: it's possible to get JSON represenations of those things
+as output:
+
+```
+▶ jsluice query -q '(object) @match' config.js | jq
+{
+  "dns": [
+    "1.1.1.1",
+    "8.8.8.8"
+  ],
+  "paths": {
+    "blog": "/blog",
+    "home": "/"
+  },
+  "server": "example.com",
+  "stage": false,
+  "ttl": 3600
+}
+{
+  "blog": "/blog",
+  "home": "/"
+}
+```
+
+If you don't want that to happen, you can use the `-r`/`--raw-output` flag.
+
 
 ### Help
 
