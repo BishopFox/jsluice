@@ -57,9 +57,12 @@ func (a *Analyzer) GetURLs() []*URL {
 				match.BodyParams = []string{}
 			}
 
-			// Filter out data: and tel: schemes
+			// Filter out data: and tel: schemes etc
 			lower := strings.ToLower(match.URL)
-			if strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "tel:") {
+			if strings.HasPrefix(lower, "data:") ||
+				strings.HasPrefix(lower, "tel:") ||
+				strings.HasPrefix(lower, "about:") ||
+				strings.HasPrefix(lower, "javascript:") {
 				continue
 			}
 
