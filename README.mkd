@@ -1,5 +1,7 @@
 # jsluice
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/BishopFox/jsluice.svg)](https://pkg.go.dev/github.com/BishopFox/jsluice)
+
 `jsluice` is a Go package and [command-line tool](/cmd/jsluice/) for extracting URLs, paths, secrets,
 and other interesting data from JavaScript source code.
 
