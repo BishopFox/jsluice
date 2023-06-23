@@ -1,0 +1,7 @@
+# Commands
+This directory contains commands related to the `jsluice` package.
+
+The `jsluice` directory contains the main `jsluice` command-line tool.
+
+The `jsurls-sinks` directory contains a development tool used to find
+places in JavaScript source that may contain URLs or paths.

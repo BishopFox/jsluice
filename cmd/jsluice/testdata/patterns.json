@@ -1,0 +1,22 @@
+[
+    {
+        "name": "base64",
+        "value": "(eyJ|YTo|Tzo|PD[89]|rO0)[%a-zA-Z0-9+/]+={0,2}",
+        "severity": "low"
+    },
+    {
+        "name": "genericSecret",
+        "key": "(secret|private|apikey)",
+        "value": "[%a-zA-Z0-9+/]+"
+    },
+    {
+        "name": "firebaseConfig",
+        "severity": "high",
+        "object": [
+            {"key": "apiKey", "value": "^AIza.+"},
+            {"key": "authDomain"},
+            {"key": "projectId"},
+            {"key": "storageBucket"}
+        ]
+    }
+]

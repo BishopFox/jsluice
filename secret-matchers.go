@@ -4,15 +4,42 @@ import (
 	"strings"
 )
 
-// A Secret represents any bit of secret or otherwise interesting
-// data found within a JavaScript file. E.g. an AWS access key and
-// secret.
+// A Secret represents any secret or otherwise interesting data
+// found within a JavaScript file. E.g. an AWS access key.
 type Secret struct {
-	Kind       string            `json:"kind"`
-	Data       any               `json:"data"`
-	Filename   string            `json:"filename,omitempty"`
-	LeadWorthy bool              `json:"leadWorthy"`
-	Context    map[string]string `json:"context"`
+	Kind     string   `json:"kind"`
+	Data     any      `json:"data"`
+	Filename string   `json:"filename,omitempty"`
+	Severity Severity `json:"severity"`
+	Context  any      `json:"context"`
+}
+
+// Severity indicates how serious a finding is
+type Severity string
+
+const (
+	SeverityInfo   Severity = "info"
+	SeverityLow    Severity = "low"
+	SeverityMedium Severity = "medium"
+	SeverityHigh   Severity = "high"
+)
+
+// AddSecretMatcher allows custom SecretMatchers to be added to the Analyzer
+func (a *Analyzer) AddSecretMatcher(s SecretMatcher) {
+	if a.userSecretMatchers == nil {
+		a.userSecretMatchers = make([]SecretMatcher, 0)
+	}
+
+	a.userSecretMatchers = append(a.userSecretMatchers, s)
+}
+
+// AddSecretMatchers allows multiple custom SecretMatchers to be added to the Analyzer
+func (a *Analyzer) AddSecretMatchers(ss []SecretMatcher) {
+	if a.userSecretMatchers == nil {
+		a.userSecretMatchers = make([]SecretMatcher, 0)
+	}
+
+	a.userSecretMatchers = append(a.userSecretMatchers, ss...)
 }
 
 // GetSecrets uses the parse tree and a set of Matchers (those provided
@@ -24,8 +51,12 @@ func (a *Analyzer) GetSecrets() []*Secret {
 	nodeCache := make(map[string][]*Node)
 
 	matchers := AllSecretMatchers()
-	for _, m := range matchers {
 
+	if a.userSecretMatchers != nil {
+		matchers = append(matchers, a.userSecretMatchers...)
+	}
+
+	for _, m := range matchers {
 		if _, exists := nodeCache[m.Query]; !exists {
 			nodes := make([]*Node, 0)
 			a.Query(m.Query, func(n *Node) {

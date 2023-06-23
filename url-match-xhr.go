@@ -94,7 +94,10 @@ func matchXHR() URLMatcher {
 				break
 			}
 			parent = candidate
-			if parent.Type() == "function_declaration" {
+			pt := parent.Type()
+			if pt == "function_declaration" ||
+				pt == "function" ||
+				pt == "arrow_function" {
 				break
 			}
 		}

@@ -28,9 +28,9 @@ func gcpKeyMatcher() SecretMatcher {
 		}
 
 		match := &Secret{
-			Kind:       "gcpKey",
-			LeadWorthy: false,
-			Data:       data,
+			Kind:     "gcpKey",
+			Severity: SeverityLow,
+			Data:     data,
 		}
 
 		// If the key is in an object we want to include that whole object as context
@@ -77,9 +77,9 @@ func firebaseMatcher() SecretMatcher {
 		}
 
 		return &Secret{
-			Kind:       "firebase",
-			LeadWorthy: true,
-			Data:       o.asMap(),
+			Kind:     "firebase",
+			Severity: SeverityHigh,
+			Data:     o.asMap(),
 		}
 	}}
 }

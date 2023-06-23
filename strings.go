@@ -180,8 +180,7 @@ func (s *stringLexer) String() string {
 }
 
 // DecodeString accepts a raw string as it might be found in some
-// JavaScript source code (without surrounding quotes), and converts
-// any escape sequences. E.g.
+// JavaScript source code, and converts any escape sequences. E.g:
 //   foo\x3dbar -> foo=bar // Hex escapes
 //   foo\u003Dbar -> foo=bar // Unicode escapes
 //   foo\u{003D}bar -> foo=bar // Braced unicode escapes

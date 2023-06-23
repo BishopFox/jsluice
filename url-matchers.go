@@ -57,9 +57,12 @@ func (a *Analyzer) GetURLs() []*URL {
 				match.BodyParams = []string{}
 			}
 
-			// Filter out data: and tel: schemes
+			// Filter out data: and tel: schemes etc
 			lower := strings.ToLower(match.URL)
-			if strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "tel:") {
+			if strings.HasPrefix(lower, "data:") ||
+				strings.HasPrefix(lower, "tel:") ||
+				strings.HasPrefix(lower, "about:") ||
+				strings.HasPrefix(lower, "javascript:") {
 				continue
 			}
 
@@ -67,7 +70,7 @@ func (a *Analyzer) GetURLs() []*URL {
 			// and skip them. Maybe this should be optional? Maybe it should
 			// remove things like EXPR#EXPR etc too
 			letters := re.ReplaceAllString(match.URL, "")
-			if strings.ReplaceAll(letters, "EXPR", "") == "" {
+			if strings.ReplaceAll(letters, ExpressionPlaceholder, "") == "" {
 				continue
 			}
 
@@ -83,7 +86,7 @@ func (a *Analyzer) GetURLs() []*URL {
 
 				for p, _ := range u.Query() {
 					// Ignore params that were expressions
-					if p == "EXPR" {
+					if p == ExpressionPlaceholder {
 						continue
 					}
 					match.QueryParams = append(match.QueryParams, p)
@@ -122,6 +125,21 @@ type URLMatcher struct {
 	Fn   func(*Node) *URL
 }
 
+// AddURLMatcher allows custom URLMatchers to be added to the Analyzer
+func (a *Analyzer) AddURLMatcher(u URLMatcher) {
+	if a.urlMatchers == nil {
+		a.urlMatchers = make([]URLMatcher, 0)
+	}
+
+	a.urlMatchers = append(a.urlMatchers, u)
+}
+
+// DisableDefaultURLMatchers disables the default URLMatchers, so that
+// only user-added URLMatchers are used.
+func (a *Analyzer) DisableDefaultURLMatchers() {
+	a.urlMatchers = make([]URLMatcher, 0)
+}
+
 // AllURLMatchers returns the detault list of URLMatchers
 func AllURLMatchers() []URLMatcher {
 
@@ -138,6 +156,10 @@ func AllURLMatchers() []URLMatcher {
 		}
 
 		if strings.HasSuffix(name, ".href") {
+			return true
+		}
+
+		if strings.HasSuffix(name, ".src") {
 			return true
 		}
 
@@ -165,7 +187,7 @@ func AllURLMatchers() []URLMatcher {
 			}
 
 			// We want to find values that at least *start* with a string of some kind.
-			// This might be kind of useful to the crawler:
+			// This might be kind of useful to crawlers etc:
 			//
 			//   location.href = "/somePath/" + someVar;
 			//
