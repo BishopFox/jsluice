@@ -79,8 +79,8 @@ func init() {
 			"",
 			"Global options:",
 			"  -c, --concurrency int        Number of files to process concurrently (default 1)",
-			"  -C, --cookie string			Cookies to use when making requests to the specified HTTP based arguments"
-			"  -H, --header string			Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)"
+			"  -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments",
+			"  -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)",
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
 			"",
 			"URLs mode:",
