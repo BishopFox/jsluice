@@ -46,6 +46,7 @@ of expressions like this are replaced with `EXPR` by default, but that can be ch
         * [Custom Secret Matchers](#custom-secret-matchers)
     * [Printing Syntax Trees](#printing-syntax-trees)
     * [Running Queries](#running-queries)
+    * [Using remote files over HTTP](#requesting-files-from-remote-hosts)
     * [Getting help](#help)
 
 ## Install
