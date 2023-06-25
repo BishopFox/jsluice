@@ -79,6 +79,8 @@ func init() {
 			"",
 			"Global options:",
 			"  -c, --concurrency int        Number of files to process concurrently (default 1)",
+			"  -C, --cookie string			Cookies to use when making requests to the specified HTTP based arguments"
+			"  -H, --header string			Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)"
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
 			"",
 			"URLs mode:",
@@ -94,7 +96,7 @@ func init() {
 			"  -r, --raw-output             Do not JSON-encode query output",
 			"",
 			"Examples:",
-			"  jsluice urls example.js",
+			"  jsluice urls -C 'auth=true; user=admin;' -H 'Specific-Header-One: true' -H 'Specific-Header-Two: false' local_file.js https://remote.host/example.js",
 			"  jsluice query -q '(object) @m' one.js two.js",
 			"  find . -name *.js' | jsluice secrets -c 5 --patterns=apikeys.json",
 		}
