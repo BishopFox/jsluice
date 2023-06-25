@@ -3,6 +3,7 @@ package main
 // Extract URLs and related stuff out of JavaScript files
 
 import (
+	"net/http"
 	"bufio"
 	"fmt"
 	"io"
@@ -172,7 +173,7 @@ func main() {
 			defer wg.Done()
 			for filename := range jobs {
 
-				source, err := ioutil.ReadFile(filename)
+				source, err := readFromFileOrURL(filename)
 				if err != nil {
 					errs <- err
 					continue
@@ -201,4 +202,23 @@ func main() {
 	close(output)
 	close(errs)
 
+}
+
+func readFromFileOrURL(path string) ([]byte, error) {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		resp, err := http.Get(path)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		
+		// Check if the request was successful
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GET request failed with status code %d", resp.StatusCode)
+		}
+
+		return ioutil.ReadAll(resp.Body)
+	}
+
+	return ioutil.ReadFile(path)
 }
