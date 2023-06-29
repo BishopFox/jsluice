@@ -78,7 +78,7 @@ func init() {
 			"Examples:",
 			"  jsluice urls example.js",
 			"  jsluice query -q '(object) @m' one.js two.js",
-			"  find . -name *.js' | jsluice secrets -c 5 --patterns=apikeys.json",
+			"  find . -name '*.js' | jsluice secrets -c 5 --patterns=apikeys.json",
 		}
 		fmt.Fprintf(os.Stderr, "%s\n", strings.Join(lines, "\n"))
 	}
