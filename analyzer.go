@@ -20,12 +20,16 @@ type Analyzer struct {
 // source code and returns a pointer to a new Analyzer
 func NewAnalyzer(source []byte) *Analyzer {
 	// If the source is HTML, parse out the inline JavaScript
-	source = ParseInline(source)
-
 	parser := sitter.NewParser()
 
 	parser.SetLanguage(javascript.GetLanguage())
+
 	tree := parser.Parse(nil, source)
+	// dump tree
+	if tree.RootNode().HasError() {
+		source = ParseInline(source)
+		tree = parser.Parse(nil, source)
+	}
 
 	// TODO: Align how URLMatcher and SecretMatcher slices
 	// are loaded. At the moment we load URLMatchers now,
@@ -63,5 +67,8 @@ func ParseInline(source []byte) []byte {
 			inline = append(inline, []byte(s.Text()+"\n")...)
 		}
 	})
+	if len(inline) == 0 {
+		return source
+	}
 	return inline
 }
