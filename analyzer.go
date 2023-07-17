@@ -1,6 +1,8 @@
 package jsluice
 
 import (
+	"bytes"
+	"github.com/PuerkitoBio/goquery"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
 )
@@ -17,7 +19,11 @@ type Analyzer struct {
 // NewAnalyzer accepts a slice of bytes representing some JavaScript
 // source code and returns a pointer to a new Analyzer
 func NewAnalyzer(source []byte) *Analyzer {
+	// If the source is HTML, parse out the inline JavaScript
+	source = ParseInline(source)
+
 	parser := sitter.NewParser()
+
 	parser.SetLanguage(javascript.GetLanguage())
 	tree := parser.Parse(nil, source)
 
@@ -38,4 +44,24 @@ func NewAnalyzer(source []byte) *Analyzer {
 // for details on query syntax.
 func (a *Analyzer) Query(q string, fn func(*Node)) {
 	a.rootNode.Query(q, fn)
+}
+
+// ParseInline should be used to parse inline JavaScript in HTML pages.
+// The provided function is called passing a byte[] source and should
+// return a slice of bytes containing only the inline JavaScript.
+// This is done through the use of the goquery library.
+func ParseInline(source []byte) []byte {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(source))
+	if err != nil {
+		// Not a valid HTML document, so just return the source.
+		return source
+	}
+
+	var inline []byte
+	doc.Find("script").Each(func(i int, s *goquery.Selection) {
+		if s.Is("script") {
+			inline = append(inline, []byte(s.Text()+"\n")...)
+		}
+	})
+	return inline
 }
