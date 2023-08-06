@@ -74,6 +74,7 @@ func matchJQuery() URLMatcher {
 					m.QueryParams = params
 				} else {
 					m.BodyParams = params
+					m.ContentType = "application/x-www-form-urlencoded; charset=UTF-8"
 				}
 			}
 		}
@@ -95,7 +96,8 @@ func matchJQuery() URLMatcher {
 			m.URL = settings.getNode("url").CollapsedString()
 		}
 
-		m.Headers = settings.getObject("headers").asMap()
+		headers := settings.getObject("headers")
+		m.Headers = headers.asMap()
 
 		if m.Method == "" {
 			// method can be specified as either `method`, or
@@ -111,6 +113,17 @@ func matchJQuery() URLMatcher {
 			m.QueryParams = params
 		} else {
 			m.BodyParams = params
+		}
+
+		if m.Method != "GET" {
+			ct := headers.getStringI("content-type", "")
+			if ct == "" {
+				ct = settings.getString(
+					"contentType",
+					"application/x-www-form-urlencoded; charset=UTF-8",
+				)
+			}
+			m.ContentType = ct
 		}
 
 		return m
