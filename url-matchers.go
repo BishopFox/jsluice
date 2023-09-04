@@ -294,6 +294,26 @@ func AllURLMatchers() []URLMatcher {
 				Source: n.Content(),
 			}
 		}},
+
+		// other function calls with a URL-like argument
+        	{"call_expression", func(n *Node) *URL {
+                        callName := n.ChildByFieldName("function").Content()
+
+                        arguments := n.ChildByFieldName("arguments")
+                        if !arguments.NamedChild(0).IsStringy() {
+                                return nil
+                        }
+
+                        if !MaybeURL(arguments.NamedChild(0).CollapsedString()) {
+                                return nil
+                        }
+
+                        return &URL{
+                                URL:    arguments.NamedChild(0).CollapsedString(),
+                                Type:   callName,
+                                Source: n.Content(),
+                        }
+                }},
 	}
 
 	return matchers
