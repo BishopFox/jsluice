@@ -68,12 +68,12 @@ func awsMatcher() SecretMatcher {
 
 		o := grandparent.AsObject()
 
-		for _, k := range o.getKeys() {
+		for _, k := range o.GetKeys() {
 			k = strings.ToLower(k)
 			if strings.Contains(k, "secret") {
 				// TODO: check format of value
 				// TODO: think of a way to handle multiple secrets in the same object?
-				data.Secret = DecodeString(o.getStringI(k, ""))
+				data.Secret = DecodeString(o.GetStringI(k, ""))
 				break
 			}
 		}
@@ -86,7 +86,7 @@ func awsMatcher() SecretMatcher {
 			Kind:     "AWSAccessKey",
 			Severity: sev,
 			Data:     data,
-			Context:  o.asMap(),
+			Context:  o.AsMap(),
 		}
 
 	}}

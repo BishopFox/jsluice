@@ -271,9 +271,9 @@ func AllURLMatchers() []URLMatcher {
 
 			return &URL{
 				URL:         arguments.NamedChild(0).CollapsedString(),
-				Method:      init.getString("method", "GET"),
-				Headers:     init.getObject("headers").asMap(),
-				ContentType: init.getObject("headers").getStringI("content-type", ""),
+				Method:      init.GetString("method", "GET"),
+				Headers:     init.GetObject("headers").AsMap(),
+				ContentType: init.GetObject("headers").GetStringI("content-type", ""),
 				Type:        "fetch",
 				Source:      n.Content(),
 			}

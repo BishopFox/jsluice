@@ -105,7 +105,7 @@ func AllSecretMatchers() []SecretMatcher {
 			o := n.AsObject()
 
 			hasReactAppKeys := false
-			for _, k := range o.getKeys() {
+			for _, k := range o.GetKeys() {
 				if strings.HasPrefix(k, "REACT_APP_") {
 					hasReactAppKeys = true
 					break
@@ -118,7 +118,7 @@ func AllSecretMatchers() []SecretMatcher {
 
 			return &Secret{
 				Kind: "reactApp",
-				Data: o.asMap(),
+				Data: o.AsMap(),
 			}
 		}},
 
@@ -160,7 +160,7 @@ func AllSecretMatchers() []SecretMatcher {
 				return match
 			}
 
-			match.Context = parent.AsObject().asMap()
+			match.Context = parent.AsObject().AsMap()
 
 			return match
 		}},

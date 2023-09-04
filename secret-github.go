@@ -37,7 +37,7 @@ func githubKeyMatcher() SecretMatcher {
 			return match
 		}
 
-		match.Context = grandparent.AsObject().asMap()
+		match.Context = grandparent.AsObject().AsMap()
 
 		return match
 	}}

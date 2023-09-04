@@ -44,7 +44,7 @@ func gcpKeyMatcher() SecretMatcher {
 			return match
 		}
 
-		match.Context = grandparent.AsObject().asMap()
+		match.Context = grandparent.AsObject().AsMap()
 
 		return match
 	}}
@@ -63,7 +63,7 @@ func firebaseMatcher() SecretMatcher {
 		}
 
 		count := 0
-		for _, k := range o.getKeys() {
+		for _, k := range o.GetKeys() {
 			if mustHave[k] {
 				count++
 			}
@@ -72,14 +72,14 @@ func firebaseMatcher() SecretMatcher {
 			return nil
 		}
 
-		if !strings.HasPrefix(o.getStringI("apiKey", ""), "AIza") {
+		if !strings.HasPrefix(o.GetStringI("apiKey", ""), "AIza") {
 			return nil
 		}
 
 		return &Secret{
 			Kind:     "firebase",
 			Severity: SeverityHigh,
-			Data:     o.asMap(),
+			Data:     o.AsMap(),
 		}
 	}}
 }

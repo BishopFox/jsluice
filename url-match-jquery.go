@@ -69,7 +69,7 @@ func matchJQuery() URLMatcher {
 			if strings.HasSuffix(callName, ".ajax") {
 				settingsNode = secondArg
 			} else {
-				params := secondArg.AsObject().getKeys()
+				params := secondArg.AsObject().GetKeys()
 				if m.Method == "GET" {
 					m.QueryParams = params
 				} else {
@@ -93,22 +93,22 @@ func matchJQuery() URLMatcher {
 		settings := settingsNode.AsObject()
 
 		if m.URL == "" {
-			m.URL = settings.getNode("url").CollapsedString()
+			m.URL = settings.GetNode("url").CollapsedString()
 		}
 
-		headers := settings.getObject("headers")
-		m.Headers = headers.asMap()
+		headers := settings.GetObject("headers")
+		m.Headers = headers.AsMap()
 
 		if m.Method == "" {
 			// method can be specified as either `method`, or
 			// `type`, and defaults to GET
-			m.Method = settings.getString(
+			m.Method = settings.GetString(
 				"method",
-				settings.getString("type", "GET"),
+				settings.GetString("type", "GET"),
 			)
 		}
 
-		params := settings.getObject("data").getKeys()
+		params := settings.GetObject("data").GetKeys()
 		if m.Method == "GET" {
 			m.QueryParams = params
 		} else {
@@ -116,9 +116,9 @@ func matchJQuery() URLMatcher {
 		}
 
 		if m.Method != "GET" {
-			ct := headers.getStringI("content-type", "")
+			ct := headers.GetStringI("content-type", "")
 			if ct == "" {
-				ct = settings.getString(
+				ct = settings.GetString(
 					"contentType",
 					"application/x-www-form-urlencoded; charset=UTF-8",
 				)

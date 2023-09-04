@@ -38,8 +38,8 @@ func NewNode(n *sitter.Node, source []byte) *Node {
 
 // AsObject returns a Node as jsluice's internal object type,
 // to allow the fetching of keys etc
-func (n *Node) AsObject() object {
-	return newObject(n, n.source)
+func (n *Node) AsObject() Object {
+	return NewObject(n, n.source)
 }
 
 // Content returns the source code for a particular node.

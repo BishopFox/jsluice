@@ -115,7 +115,7 @@ func (u *UserPattern) objectMatcher() SecretMatcher {
 
 		secret := &Secret{
 			Kind:     u.Name,
-			Data:     n.AsObject().asMap(),
+			Data:     n.AsObject().AsMap(),
 			Severity: u.Severity,
 		}
 
@@ -155,7 +155,7 @@ func (u *UserPattern) pairMatcher() SecretMatcher {
 			return secret
 		}
 
-		secret.Context = parent.AsObject().asMap()
+		secret.Context = parent.AsObject().AsMap()
 
 		return secret
 
@@ -186,7 +186,7 @@ func (u *UserPattern) stringMatcher() SecretMatcher {
 			return secret
 		}
 
-		secret.Context = grandParent.AsObject().asMap()
+		secret.Context = grandParent.AsObject().AsMap()
 
 		return secret
 	}}
