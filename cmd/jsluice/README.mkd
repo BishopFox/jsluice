@@ -46,6 +46,7 @@ of expressions like this are replaced with `EXPR` by default, but that can be ch
         * [Custom Secret Matchers](#custom-secret-matchers)
     * [Printing Syntax Trees](#printing-syntax-trees)
     * [Running Queries](#running-queries)
+    * [Using remote files over HTTP](#requesting-files-from-remote-hosts)
     * [Getting help](#help)
 
 ## Install
@@ -64,7 +65,7 @@ see the [help output](#help).
 
 ## Usage
 
-Provide `jsluice` with a mode, any options, and a list of JavaScript files:
+Provide `jsluice` with a mode, any options, and a list of JavaScript files (both local, and remote via HTTP based protocols):
 
 ```
 jsluice <mode> [options] [file...]
@@ -410,6 +411,37 @@ as output:
 
 If you don't want that to happen, you can use the `-r`/`--raw-output` flag.
 
+### Requesting files from remote hosts:
+`jsluice` will detect when an argument is passed to the tool that begins with `http://` or `https://`. These arguments will be used to retrieve the associated files, and work on them in the same process as the local files.
+
+This means that URLs can be specified aswell as the local files.
+
+```
+▶ jsluice urls demo.js https://example.com/jquery.js | jq
+{
+  "url": "/api/users?id=EXPR&format=json",
+  "queryParams": ["id", "format"],
+  "method": "GET",
+  "headers": {
+    "X-Env": "stage"
+  },
+  "type": "fetch"
+}
+{
+  "url": "/api/v1/posts",
+  "queryParams": [],
+  "bodyParams": [
+    "postId"
+  ],
+  "method": "PUT",
+  "headers": {
+    "Content-Type": "application/json",
+    "x-backend": "prod"
+  },
+  "type": "$.ajax",
+  "filename": "jquery.js"
+}
+```
 
 ### Help
 
@@ -430,6 +462,8 @@ Modes:
 
 Global options:
   -c, --concurrency int        Number of files to process concurrently (default 1)
+  -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments
+  -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)
   -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')
 
 URLs mode:
@@ -445,7 +479,7 @@ Query mode:
   -r, --raw-output             Do not JSON-encode query output
 
 Examples:
-  jsluice urls example.js
+  jsluice urls -C 'auth=true; user=admin;' -H 'Specific-Header-One: true' -H 'Specific-Header-Two: false' local_file.js https://remote.host/example.js
   jsluice query -q '(object) @m' one.js two.js
   find . -name *.js' | jsluice secrets -c 5 --patterns=apikeys.json
 ```

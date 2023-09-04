@@ -3,6 +3,7 @@ package main
 // Extract URLs and related stuff out of JavaScript files
 
 import (
+	"net/http"
 	"bufio"
 	"fmt"
 	"io"
@@ -19,6 +20,8 @@ import (
 type options struct {
 	// global
 	profile     bool
+	cookie string
+	headers []string
 	concurrency int
 	placeholder string
 	help        bool
@@ -43,6 +46,21 @@ const (
 	modeQuery   = "query"
 )
 
+type stringSlice []string
+
+func (ss *stringSlice) String() string {
+	return strings.Join(*ss, ", ")
+}
+
+func (ss *stringSlice) Set(value string) error {
+	*ss = append(*ss, value)
+	return nil
+}
+
+func (ss *stringSlice) Type() string {
+	return "string"
+}
+
 type cmdFn func(options, string, []byte, chan string, chan error)
 
 func init() {
@@ -61,6 +79,8 @@ func init() {
 			"",
 			"Global options:",
 			"  -c, --concurrency int        Number of files to process concurrently (default 1)",
+			"  -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments",
+			"  -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)",
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
 			"",
 			"URLs mode:",
@@ -76,7 +96,7 @@ func init() {
 			"  -r, --raw-output             Do not JSON-encode query output",
 			"",
 			"Examples:",
-			"  jsluice urls example.js",
+			"  jsluice urls -C 'auth=true; user=admin;' -H 'Specific-Header-One: true' -H 'Specific-Header-Two: false' local_file.js https://remote.host/example.js",
 			"  jsluice query -q '(object) @m' one.js two.js",
 			"  find . -name '*.js' | jsluice secrets -c 5 --patterns=apikeys.json",
 		}
@@ -86,10 +106,13 @@ func init() {
 
 func main() {
 	var opts options
+	var headers stringSlice
 
 	// global options
 	flag.BoolVar(&opts.profile, "profile", false, "Profile CPU usage and save a cpu.pprof file in the current dir")
 	flag.IntVarP(&opts.concurrency, "concurrency", "c", 1, "Number of files to process concurrently")
+	flag.StringVarP(&opts.cookie, "cookie", "C", "", "Cookie(s) to use when making HTTP requests")
+	flag.VarP(&headers, "header", "H", "Headers to use when making HTTP requests")
 	flag.StringVarP(&opts.placeholder, "placeholder", "P", "EXPR", "Set the expression placeholder to a custom string")
 	flag.BoolVarP(&opts.help, "help", "h", false, "")
 
@@ -106,6 +129,8 @@ func main() {
 	flag.BoolVarP(&opts.rawOutput, "raw-output", "r", false, "Do not JSON-encode query output")
 
 	flag.Parse()
+
+	opts.headers = headers
 
 	if opts.help {
 		flag.Usage()
@@ -172,7 +197,7 @@ func main() {
 			defer wg.Done()
 			for filename := range jobs {
 
-				source, err := ioutil.ReadFile(filename)
+				source, err := readFromFileOrURL(filename, opts.cookie, opts.headers)
 				if err != nil {
 					errs <- err
 					continue
@@ -201,4 +226,43 @@ func main() {
 	close(output)
 	close(errs)
 
+}
+
+func readFromFileOrURL(path string, cookie string, headers []string) ([]byte, error) {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		client := &http.Client{}
+
+		req, err := http.NewRequest("GET", path, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add cookie to the request if specified
+		if cookie != "" {
+			req.Header.Set("Cookie", cookie)
+		}
+
+		// Add headers to the request if specified
+		for _, header := range headers {
+			parts := strings.SplitN(header, ":", 2)
+			if len(parts) == 2 {
+				req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+			}
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		// Check if the request was successful
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GET request failed with status code %d", resp.StatusCode)
+		}
+
+		return ioutil.ReadAll(resp.Body)
+	}
+
+	return ioutil.ReadFile(path)
 }
