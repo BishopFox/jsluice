@@ -47,6 +47,7 @@ of expressions like this are replaced with `EXPR` by default, but that can be ch
     * [Printing Syntax Trees](#printing-syntax-trees)
     * [Running Queries](#running-queries)
     * [Using remote files over HTTP](#requesting-files-from-remote-hosts)
+    * [Using WARC files](#using-warc-files)
     * [Getting help](#help)
 
 ## Install
@@ -443,6 +444,25 @@ This means that URLs can be specified aswell as the local files.
 }
 ```
 
+### Using WARC files
+
+When the `-w`/`--warc` flag is specified, `jsluice` treats the input files as
+[WARC](https://iipc.github.io/warc-specifications/specifications/warc-format/warc-1.1-annotated/) files.
+
+```
+▶ jsluice urls --warc example.warc.gz | jq
+{
+  "url": "/blog/admin.php?redirect=/login",
+  "queryParams": [
+    "redirect"
+  ],
+  "bodyParams": [],
+  "method": "GET",
+  "type": "location.replace",
+  "filename": "https://example.com/blog/"
+}
+```
+
 ### Help
 
 You can see the `jsluice` help output with the `-h`/`--help` flag.
@@ -465,6 +485,7 @@ Global options:
   -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments
   -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)
   -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')
+  -w, --warc                   Treat the input files as WARC (Web ARChive) files
 
 URLs mode:
   -I, --ignore-strings         Ignore matches from string literals
