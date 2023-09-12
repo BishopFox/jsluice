@@ -3,28 +3,31 @@ package main
 // Extract URLs and related stuff out of JavaScript files
 
 import (
-	"net/http"
 	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/BishopFox/jsluice"
 	"github.com/pkg/profile"
+	"github.com/slyrz/warc"
 	flag "github.com/spf13/pflag"
 )
 
 type options struct {
 	// global
 	profile     bool
-	cookie string
-	headers []string
+	cookie      string
+	headers     []string
 	concurrency int
 	placeholder string
 	help        bool
+	warc        bool
+	unique      bool
 
 	// urls
 	includeSource bool
@@ -82,11 +85,13 @@ func init() {
 			"  -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments",
 			"  -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)",
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
+			"  -w, --warc                   Treat the input files as WARC (Web ARChive) files",
 			"",
 			"URLs mode:",
 			"  -I, --ignore-strings         Ignore matches from string literals",
 			"  -S, --include-source         Include the source code where the URL was found",
 			"  -R, --resolve-paths <url>    Resolve relative paths using the absolute URL provided",
+			"  -u, --unique                 Only output each URL once per input file",
 			"",
 			"Secrets mode:",
 			"  -p, --patterns <file>        JSON file containing user-defined secret patterns to look for",
@@ -115,11 +120,13 @@ func main() {
 	flag.VarP(&headers, "header", "H", "Headers to use when making HTTP requests")
 	flag.StringVarP(&opts.placeholder, "placeholder", "P", "EXPR", "Set the expression placeholder to a custom string")
 	flag.BoolVarP(&opts.help, "help", "h", false, "")
+	flag.BoolVarP(&opts.warc, "warc", "w", false, "")
 
 	// url options
 	flag.BoolVarP(&opts.includeSource, "include-source", "S", false, "Include the source code where the URL was found")
 	flag.BoolVarP(&opts.ignoreStrings, "ignore-strings", "I", false, "Ignore matches from string literals")
 	flag.StringVarP(&opts.resolvePaths, "resolve-paths", "R", "", "Resolve relative paths using the absolute URL provided")
+	flag.BoolVarP(&opts.unique, "unique", "u", false, "")
 
 	// secrets options
 	flag.StringVarP(&opts.patternsFile, "patterns", "p", "", "JSON file containing user-defined secret patterns to look for")
@@ -158,6 +165,7 @@ func main() {
 	done := make(chan any)
 
 	go func() {
+
 		for {
 			select {
 			case out := <-output:
@@ -196,6 +204,19 @@ func main() {
 		go func() {
 			defer wg.Done()
 			for filename := range jobs {
+
+				if opts.warc {
+					responses, err := readWARCFile(filename)
+					if err != nil {
+						errs <- err
+						continue
+					}
+
+					for _, response := range responses {
+						modeFn(opts, response.url, response.source, output, errs)
+					}
+					continue
+				}
 
 				source, err := readFromFileOrURL(filename, opts.cookie, opts.headers)
 				if err != nil {
@@ -265,4 +286,60 @@ func readFromFileOrURL(path string, cookie string, headers []string) ([]byte, er
 	}
 
 	return ioutil.ReadFile(path)
+}
+
+type warcResponse struct {
+	url    string
+	source []byte
+}
+
+func readWARCFile(filename string) ([]warcResponse, error) {
+	out := make([]warcResponse, 0)
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return out, err
+	}
+	defer f.Close()
+
+	r, err := warc.NewReader(f)
+	if err != nil {
+		return out, err
+	}
+	defer r.Close()
+
+	for {
+		record, err := r.ReadRecord()
+		if err != nil {
+			break
+		}
+
+		if record.Header.Get("content-type") != "application/http; msgtype=response" {
+			continue
+		}
+
+		buf := bufio.NewReader(record.Content)
+		response, err := http.ReadResponse(buf, nil)
+		if err != nil {
+			return out, err
+		}
+
+		ct := strings.ToLower(response.Header.Get("content-type"))
+		if !strings.Contains(ct, "javascript") && !strings.Contains(ct, "html") {
+			continue
+		}
+
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return out, err
+		}
+		response.Body.Close()
+
+		out = append(out, warcResponse{
+			url:    record.Header.Get("WARC-Target-URI"),
+			source: body,
+		})
+	}
+
+	return out, nil
 }

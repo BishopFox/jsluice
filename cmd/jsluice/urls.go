@@ -20,6 +20,8 @@ func extractURLs(opts options, filename string, source []byte, output chan strin
 		}
 	}
 
+	seen := make(map[string]any, 0)
+
 	analzyer := jsluice.NewAnalyzer(source)
 	for _, m := range analzyer.GetURLs() {
 		if opts.ignoreStrings && m.Type == "stringLiteral" {
@@ -39,6 +41,11 @@ func extractURLs(opts options, filename string, source []byte, output chan strin
 				m.URL = resolveURL.ResolveReference(parsed).String()
 			}
 		}
+
+		if _, exists := seen[m.URL]; opts.unique && exists {
+			continue
+		}
+		seen[m.URL] = struct{}{}
 
 		j, err := json.Marshal(m)
 		if err != nil {
