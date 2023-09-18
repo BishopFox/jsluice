@@ -2,6 +2,8 @@ package jsluice
 
 import (
 	"bytes"
+	"unicode"
+
 	"github.com/PuerkitoBio/goquery"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
@@ -19,17 +21,15 @@ type Analyzer struct {
 // NewAnalyzer accepts a slice of bytes representing some JavaScript
 // source code and returns a pointer to a new Analyzer
 func NewAnalyzer(source []byte) *Analyzer {
-	// If the source is HTML, parse out the inline JavaScript
 	parser := sitter.NewParser()
 
 	parser.SetLanguage(javascript.GetLanguage())
 
-	tree := parser.Parse(nil, source)
-	// dump tree
-	if tree.RootNode().HasError() {
-		source = ParseInline(source)
-		tree = parser.Parse(nil, source)
+	if isProbablyHTML(source) {
+		source = extractInlineJS(source)
 	}
+
+	tree := parser.Parse(nil, source)
 
 	// TODO: Align how URLMatcher and SecretMatcher slices
 	// are loaded. At the moment we load URLMatchers now,
@@ -50,11 +50,26 @@ func (a *Analyzer) Query(q string, fn func(*Node)) {
 	a.rootNode.Query(q, fn)
 }
 
-// ParseInline should be used to parse inline JavaScript in HTML pages.
-// The provided function is called passing a byte[] source and should
-// return a slice of bytes containing only the inline JavaScript.
-// This is done through the use of the goquery library.
-func ParseInline(source []byte) []byte {
+// isProbablyHTML returns true for source that is probably HTML.
+// False positives are OK as long as the false positives are not
+// JavaScript source.
+func isProbablyHTML(source []byte) bool {
+	for _, b := range source {
+		if unicode.IsSpace(rune(b)) {
+			continue
+		}
+
+		if b == '<' {
+			return true
+		}
+		break
+	}
+
+	return false
+}
+
+// extractInlineJS extracts inline JavaScript from HTML pages using goquery.
+func extractInlineJS(source []byte) []byte {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(source))
 	if err != nil {
 		// Not a valid HTML document, so just return the source.
