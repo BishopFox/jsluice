@@ -40,3 +40,24 @@ func TestAnalyzerBasicSecrets(t *testing.T) {
 		t.Errorf("Expected first secret kind to be AWSAccessKey; got %s", secrets[0].Kind)
 	}
 }
+
+func TestIsProbablyHTML(t *testing.T) {
+	cases := []struct {
+		in       []byte
+		expected bool
+	}{
+		{[]byte("var foo = bar"), false},
+		{[]byte(" \t\nvar foo = bar"), false},
+		{[]byte("lol this isn't even JavaScript"), false},
+		{[]byte("<!doctype html><html>"), true},
+		{[]byte(" \t\n<div><p>"), true},
+	}
+
+	for _, c := range cases {
+		actual := isProbablyHTML(c.in)
+
+		if actual != c.expected {
+			t.Errorf("want %t for isProbablyHTML(%q); have %t", c.expected, c.in, actual)
+		}
+	}
+}
