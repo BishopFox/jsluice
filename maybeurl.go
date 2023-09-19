@@ -21,7 +21,7 @@ func MaybeURL(in string) bool {
 	// This should eliminate a pretty big percentage of
 	// string literals that we find, and avoid spending
 	// the resources on parsing them as URLs
-	if !strings.ContainsAny(in, "/?") {
+	if !strings.ContainsAny(in, "/?.") {
 		return false
 	}
 
