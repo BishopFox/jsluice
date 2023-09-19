@@ -280,7 +280,31 @@ func AllURLMatchers() []URLMatcher {
 			return nil
 		}},
 
+		// other function calls with a URL-like argument
+		{"call_expression", func(n *Node) *URL {
+			callName := n.ChildByFieldName("function").Content()
+
+			arguments := n.ChildByFieldName("arguments")
+			if !arguments.NamedChild(0).IsStringy() {
+				return nil
+			}
+
+			if !MaybeURL(arguments.NamedChild(0).CollapsedString()) {
+				return nil
+			}
+
+			return &URL{
+				URL:    arguments.NamedChild(0).CollapsedString(),
+				Type:   callName,
+				Source: n.Content(),
+			}
+		}},
+
 		// string literals
+		// This should always go last because it's the matcher
+		// that provides the least amount of context. When doing
+		// de-duplication based on the path that means that a
+		// duplicate with more context would "win" if one exists
 		{"string", func(n *Node) *URL {
 			trimmed := n.RawString()
 
@@ -294,26 +318,6 @@ func AllURLMatchers() []URLMatcher {
 				Source: n.Content(),
 			}
 		}},
-
-		// other function calls with a URL-like argument
-        	{"call_expression", func(n *Node) *URL {
-                        callName := n.ChildByFieldName("function").Content()
-
-                        arguments := n.ChildByFieldName("arguments")
-                        if !arguments.NamedChild(0).IsStringy() {
-                                return nil
-                        }
-
-                        if !MaybeURL(arguments.NamedChild(0).CollapsedString()) {
-                                return nil
-                        }
-
-                        return &URL{
-                                URL:    arguments.NamedChild(0).CollapsedString(),
-                                Type:   callName,
-                                Source: n.Content(),
-                        }
-                }},
 	}
 
 	return matchers

@@ -35,6 +35,10 @@ func awsMatcher() SecretMatcher {
 			return nil
 		}
 
+		if strings.Contains(str, "_") {
+			return nil
+		}
+
 		// Check it matches the regex
 		if !awsKey.MatchString(str) {
 			return nil

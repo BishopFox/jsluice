@@ -33,6 +33,13 @@ func MaybeURL(in string) bool {
 		return false
 	}
 
+	// This could be prone to false positives, but it
+	// seems that in the wild most strings that start
+	// with a slash are actually paths
+	if strings.HasPrefix(in, "/") {
+		return true
+	}
+
 	// Let's attempt to parse it as a URL, so we can
 	// do some analysis on the individual parts
 	u, err := url.Parse(in)
