@@ -21,7 +21,7 @@ func MaybeURL(in string) bool {
 	// This should eliminate a pretty big percentage of
 	// string literals that we find, and avoid spending
 	// the resources on parsing them as URLs
-	if !strings.ContainsAny(in, "/?") {
+	if !strings.ContainsAny(in, "/?.") {
 		return false
 	}
 
@@ -31,6 +31,13 @@ func MaybeURL(in string) bool {
 	// better than spitting out a ton of false-positives
 	if strings.ContainsAny(in, " ()!<>'\"`{}^$,") {
 		return false
+	}
+
+	// This could be prone to false positives, but it
+	// seems that in the wild most strings that start
+	// with a slash are actually paths
+	if strings.HasPrefix(in, "/") {
+		return true
 	}
 
 	// Let's attempt to parse it as a URL, so we can
