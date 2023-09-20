@@ -98,7 +98,7 @@ func init() {
 			"",
 			"Query mode:",
 			"  -q, --query <query>          Tree sitter query to run; e.g. '(string) @matches'",
-			"  -r, --raw-output             Do not JSON-encode query output",
+			"  -r, --raw-output             Do not convert values to native types",
 			"",
 			"Examples:",
 			"  jsluice urls -C 'auth=true; user=admin;' -H 'Specific-Header-One: true' -H 'Specific-Header-Two: false' local_file.js https://remote.host/example.js",
@@ -133,7 +133,7 @@ func main() {
 
 	// query options
 	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run; e.g. '(string) @matches'")
-	flag.BoolVarP(&opts.rawOutput, "raw-output", "r", false, "Do not JSON-encode query output")
+	flag.BoolVarP(&opts.rawOutput, "raw-output", "r", false, "Do not convert values to native types")
 
 	flag.Parse()
 

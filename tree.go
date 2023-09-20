@@ -21,8 +21,9 @@ var ExpressionPlaceholder = "EXPR"
 // store the raw JavaScript source that is a required argument
 // for many tree-sitter functions.
 type Node struct {
-	node   *sitter.Node
-	source []byte
+	node        *sitter.Node
+	source      []byte
+	captureName string
 }
 
 // NewNode creates a new Node for the provided tree-sitter
@@ -267,12 +268,66 @@ func (n *Node) Parent() *Node {
 }
 
 // Query executes a tree-sitter query on a specific Node.
-// Nodes matching the query are passed one at a time to the
+// Nodes captured by the query are passed one at a time to the
 // provided callback function.
 //
 // See https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries
 // for query syntax documentation.
 func (n *Node) Query(query string, fn func(*Node)) {
+	n.QueryMulti(query, func(qr QueryResult) {
+		for _, n := range qr {
+			fn(n)
+		}
+	})
+}
+
+// QueryResult is a map of capture names to the corresponding nodes that they matched
+type QueryResult map[string]*Node
+
+// NewQueryResult returns a QueryResult containing the provided *Nodes
+func NewQueryResult(nodes ...*Node) QueryResult {
+	out := make(QueryResult)
+
+	for _, n := range nodes {
+		out.Add(n)
+	}
+
+	return out
+}
+
+// Add accepts a *Node and adds it to the QueryResult,
+// provided it has a valid CaptureName
+func (qr QueryResult) Add(n *Node) {
+	key := n.CaptureName()
+	if key == "" {
+		return
+	}
+	qr[key] = n
+}
+
+// Has returns true if the QueryResult contains a *Node
+// for the provided capture name
+func (qr QueryResult) Has(captureName string) bool {
+	_, exists := qr[captureName]
+	return exists
+}
+
+// Get returns the corresponding *Node for the provided
+// capture name, or nil if no such *Node exists
+func (qr QueryResult) Get(captureName string) *Node {
+	if !qr.Has(captureName) {
+		return nil
+	}
+	return qr[captureName]
+}
+
+// QueryMulti executes a tree-sitter query on a specific Node.
+// Nodes captured by the query are grouped into a QueryResult
+// and passed to the provided callback function.
+//
+// See https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries
+// for query syntax documentation.
+func (n *Node) QueryMulti(query string, fn func(QueryResult)) {
 	if !n.IsValid() {
 		return
 	}
@@ -295,9 +350,16 @@ func (n *Node) Query(query string, fn func(*Node)) {
 			break
 		}
 
+		match = qc.FilterPredicates(match, n.source)
+
+		qr := NewQueryResult()
+
 		for _, capture := range match.Captures {
-			fn(NewNode(capture.Node, n.source))
+			node := NewNode(capture.Node, n.source)
+			node.captureName = q.CaptureNameForId(capture.Index)
+			qr.Add(node)
 		}
+		fn(qr)
 	}
 }
 
@@ -320,6 +382,12 @@ func (n *Node) IsStringy() bool {
 	default:
 		return false
 	}
+}
+
+// CaptureName returns the name given to a node in a
+// query if one exists, and an empty string otherwise
+func (n *Node) CaptureName() string {
+	return n.captureName
 }
 
 // dequote removes surround quotes from the provided string

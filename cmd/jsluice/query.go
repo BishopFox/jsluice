@@ -13,15 +13,29 @@ func runQuery(opts options, filename string, source []byte, output chan string, 
 	analyzer := jsluice.NewAnalyzer(source)
 
 	buf := &strings.Builder{}
-	enter := func(n *jsluice.Node) {
-		content := n.Content()
 
-		if opts.rawOutput {
-			fmt.Fprintln(buf, content)
+	enter := func(qr jsluice.QueryResult) {
+		vals := make(map[string]any)
+
+		for k, n := range qr {
+			vals[k] = n.Content()
+			if !opts.rawOutput {
+				vals[k] = n.AsGoType()
+			}
+		}
+
+		if len(vals) == 0 {
 			return
 		}
 
-		out := n.AsGoType()
+		var out any
+		out = vals
+		if len(vals) == 1 {
+			for _, val := range vals {
+				out = val
+				break
+			}
+		}
 
 		b, err := json.Marshal(out)
 		if err != nil {
@@ -30,7 +44,7 @@ func runQuery(opts options, filename string, source []byte, output chan string, 
 		fmt.Fprintf(buf, "%s\n", b)
 	}
 
-	analyzer.Query(opts.query, enter)
+	analyzer.QueryMulti(opts.query, enter)
 
 	output <- strings.TrimSpace(buf.String())
 }
