@@ -28,6 +28,10 @@ func runQuery(opts options, filename string, source []byte, output chan string, 
 			return
 		}
 
+		if opts.includeFilename {
+			vals["filename"] = filename
+		}
+
 		var out any
 		out = vals
 		if len(vals) == 1 {

@@ -38,8 +38,9 @@ type options struct {
 	patternsFile string
 
 	// query
-	query     string
-	rawOutput bool
+	query           string
+	rawOutput       bool
+	includeFilename bool
 }
 
 const (
@@ -99,6 +100,7 @@ func init() {
 			"Query mode:",
 			"  -q, --query <query>          Tree sitter query to run; e.g. '(string) @matches'",
 			"  -r, --raw-output             Do not convert values to native types",
+			"  -f, --include-filename       Include the filename in the output",
 			"",
 			"Examples:",
 			"  jsluice urls -C 'auth=true; user=admin;' -H 'Specific-Header-One: true' -H 'Specific-Header-Two: false' local_file.js https://remote.host/example.js",
@@ -134,6 +136,7 @@ func main() {
 	// query options
 	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run; e.g. '(string) @matches'")
 	flag.BoolVarP(&opts.rawOutput, "raw-output", "r", false, "Do not convert values to native types")
+	flag.BoolVarP(&opts.includeFilename, "include-filename", "f", false, "Include the filename in the output")
 
 	flag.Parse()
 
