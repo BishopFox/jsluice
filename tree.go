@@ -104,6 +104,22 @@ func (n *Node) NamedChildren() []*Node {
 	return out
 }
 
+// NextNamedSibling returns the next named sibling in the tree
+func (n *Node) NextNamedSibling() *Node {
+	if !n.IsValid() {
+		return nil
+	}
+	return NewNode(n.node.NextNamedSibling(), n.source)
+}
+
+// PrevNamedSibling returns the previous named sibling in the tree
+func (n *Node) PrevNamedSibling() *Node {
+	if !n.IsValid() {
+		return nil
+	}
+	return NewNode(n.node.PrevNamedSibling(), n.source)
+}
+
 // CollapsedString takes a node representing a URL and attempts to make it
 // at least somewhat easily parseable. It's common to build URLs out
 // of variables and function calls so we want to turn something like:
@@ -358,6 +374,9 @@ func (n *Node) QueryMulti(query string, fn func(QueryResult)) {
 			node := NewNode(capture.Node, n.source)
 			node.captureName = q.CaptureNameForId(capture.Index)
 			qr.Add(node)
+		}
+		if len(qr) == 0 {
+			continue
 		}
 		fn(qr)
 	}
