@@ -59,6 +59,11 @@ func (a *Analyzer) QueryMulti(q string, fn func(QueryResult)) {
 	a.rootNode.QueryMulti(q, fn)
 }
 
+// RootNode returns the root note of the parsed JavaScript
+func (a *Analyzer) RootNode() *Node {
+	return a.rootNode
+}
+
 // isProbablyHTML returns true for source that is probably HTML.
 // False positives are OK as long as the false positives are not
 // JavaScript source.
