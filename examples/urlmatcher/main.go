@@ -21,7 +21,7 @@ func main() {
 	analyzer.AddURLMatcher(
 		// The first value in the jsluice.URLMatcher struct is the type of node to look for.
 		// It can be one of "string", "assignment_expression", or "call_expression"
-		jsluice.URLMatcher{"string", func(n *jsluice.Node) *jsluice.URL {
+		jsluice.SingleURLMatcher("string", func(n *jsluice.Node) *jsluice.URL {
 			val := n.DecodedString()
 			if !strings.HasPrefix(val, "mailto:") {
 				return nil
@@ -31,7 +31,7 @@ func main() {
 				URL:  val,
 				Type: "mailto",
 			}
-		}},
+		}),
 	)
 
 	for _, match := range analyzer.GetURLs() {
