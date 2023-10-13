@@ -43,11 +43,25 @@ func NewAnalyzer(source []byte) *Analyzer {
 }
 
 // Query peforms a tree-sitter query on the JavaScript being analyzed.
-// The provided function is called for every node that matches the query.
+// The provided function is called once for every node that captured by the query.
 // See https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
 // for details on query syntax.
 func (a *Analyzer) Query(q string, fn func(*Node)) {
 	a.rootNode.Query(q, fn)
+}
+
+// Query peforms a tree-sitter query on the JavaScript being analyzed.
+// The provided function is called for every query match, with captured nodes
+// grouped into a QueryResult
+// See https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
+// for details on query syntax.
+func (a *Analyzer) QueryMulti(q string, fn func(QueryResult)) {
+	a.rootNode.QueryMulti(q, fn)
+}
+
+// RootNode returns the root note of the parsed JavaScript
+func (a *Analyzer) RootNode() *Node {
+	return a.rootNode
 }
 
 // isProbablyHTML returns true for source that is probably HTML.
