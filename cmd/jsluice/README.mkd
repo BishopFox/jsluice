@@ -323,7 +323,7 @@ If you wanted the match against all of the value, the regex could be changed to:
 
 ### Printing Syntax Trees
 
-The `tree` mode prints a textual represenation of the syntax tree for each JavaScript file.
+The `tree` mode prints a textual representation of the syntax tree for each JavaScript file.
 This is especially helpful when [writing queries](#running-queries).
 
 The output can be quite long, so here's a tiny example program:
