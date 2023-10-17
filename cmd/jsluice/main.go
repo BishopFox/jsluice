@@ -48,6 +48,7 @@ const (
 	modeSecrets = "secrets"
 	modeTree    = "tree"
 	modeQuery   = "query"
+	modeFormat  = "format"
 )
 
 type stringSlice []string
@@ -191,6 +192,7 @@ func main() {
 		modeSecrets: extractSecrets,
 		modeTree:    printTree,
 		modeQuery:   runQuery,
+		modeFormat:  format,
 	}
 
 	if _, exists := modes[mode]; !exists {

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
 )
@@ -70,6 +71,14 @@ func (n *Node) ChildByFieldName(name string) *Node {
 	return NewNode(n.node.ChildByFieldName(name), n.source)
 }
 
+// Child returns the child Node at the provided index
+func (n *Node) Child(index int) *Node {
+	if !n.IsValid() {
+		return nil
+	}
+	return NewNode(n.node.Child(index), n.source)
+}
+
 // NamedChild returns the 'named' child Node at the provided
 // index. Tree-sitter considers a child to be named if it has
 // a name in the syntax tree. Things like brackets are not named,
@@ -83,12 +92,32 @@ func (n *Node) NamedChild(index int) *Node {
 	return NewNode(n.node.NamedChild(index), n.source)
 }
 
+// ChildCount returns the number of children a node has
+func (n *Node) ChildCount() int {
+	if !n.IsValid() {
+		return 0
+	}
+	return int(n.node.ChildCount())
+}
+
 // NamedChildCount returns the number of named children a Node has.
 func (n *Node) NamedChildCount() int {
 	if !n.IsValid() {
 		return 0
 	}
 	return int(n.node.NamedChildCount())
+}
+
+// Childten returns a slide of *Node containing all children for a node
+func (n *Node) Children() []*Node {
+	count := n.ChildCount()
+	out := make([]*Node, 0, count)
+
+	for i := 0; i < count; i++ {
+		out = append(out, n.Child(i))
+	}
+
+	return out
 }
 
 // NamedChildren returns a slice of *Node containg all
@@ -104,12 +133,28 @@ func (n *Node) NamedChildren() []*Node {
 	return out
 }
 
+// NextSibling returns the next sibling in the tree
+func (n *Node) NextSibling() *Node {
+	if !n.IsValid() {
+		return nil
+	}
+	return NewNode(n.node.NextSibling(), n.source)
+}
+
 // NextNamedSibling returns the next named sibling in the tree
 func (n *Node) NextNamedSibling() *Node {
 	if !n.IsValid() {
 		return nil
 	}
 	return NewNode(n.node.NextNamedSibling(), n.source)
+}
+
+// PrevSibling returns the previous sibling in the tree
+func (n *Node) PrevSibling() *Node {
+	if !n.IsValid() {
+		return nil
+	}
+	return NewNode(n.node.PrevSibling(), n.source)
 }
 
 // PrevNamedSibling returns the previous named sibling in the tree
@@ -281,6 +326,43 @@ func (n *Node) Parent() *Node {
 		return nil
 	}
 	return NewNode(n.node.Parent(), n.source)
+}
+
+// IsNamed returns true if the underlying node is named
+func (n *Node) IsNamed() bool {
+	if !n.IsValid() {
+		return false
+	}
+	return n.node.IsNamed()
+}
+
+// ForEachChild iterates over a node's children in a depth-first
+// manner, calling the supplied function for each node
+func (n *Node) ForEachChild(fn func(*Node)) {
+	it := sitter.NewIterator(n.node, sitter.DFSMode)
+
+	it.ForEach(func(sn *sitter.Node) error {
+		fn(NewNode(sn, n.source))
+		return nil
+	})
+}
+
+// ForEachNamedChild iterates over a node's named children in a
+// depth-first manner, calling the supplied function for each node
+func (n *Node) ForEachNamedChild(fn func(*Node)) {
+	it := sitter.NewNamedIterator(n.node, sitter.DFSMode)
+
+	it.ForEach(func(sn *sitter.Node) error {
+		fn(NewNode(sn, n.source))
+		return nil
+	})
+}
+
+// Format outputs a nicely formatted version of the source code for the
+// Node. Formatting is done by https://github.com/ditashi/jsbeautifier-go/
+func (n *Node) Format() (string, error) {
+	source := n.Content()
+	return jsbeautifier.Beautify(&source, jsbeautifier.DefaultOptions())
 }
 
 // Query executes a tree-sitter query on a specific Node.
