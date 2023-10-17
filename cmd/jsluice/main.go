@@ -27,12 +27,13 @@ type options struct {
 	placeholder string
 	help        bool
 	warc        bool
-	unique      bool
+	rawInput    bool
 
 	// urls
 	includeSource bool
 	ignoreStrings bool
 	resolvePaths  string
+	unique        bool
 
 	// secrets
 	patternsFile string
@@ -81,12 +82,14 @@ func init() {
 			"  secrets   Extract secrets and other interesting bits",
 			"  tree      Print syntax trees for input files",
 			"  query     Run tree-sitter a query against input files",
+			"  format    Beautify the JavaScript source using jsbeautifier-go",
 			"",
 			"Global options:",
 			"  -c, --concurrency int        Number of files to process concurrently (default 1)",
 			"  -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments",
 			"  -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)",
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
+			"      --raw-input              Read raw JavaScript source from stdin",
 			"  -w, --warc                   Treat the input files as WARC (Web ARChive) files",
 			"",
 			"URLs mode:",
@@ -121,6 +124,7 @@ func main() {
 	flag.IntVarP(&opts.concurrency, "concurrency", "c", 1, "Number of files to process concurrently")
 	flag.StringVarP(&opts.cookie, "cookie", "C", "", "Cookie(s) to use when making HTTP requests")
 	flag.VarP(&headers, "header", "H", "Headers to use when making HTTP requests")
+	flag.BoolVar(&opts.rawInput, "raw-input", false, "Read raw JavaScript source from stdin")
 	flag.StringVarP(&opts.placeholder, "placeholder", "P", "EXPR", "Set the expression placeholder to a custom string")
 	flag.BoolVarP(&opts.help, "help", "h", false, "")
 	flag.BoolVarP(&opts.warc, "warc", "w", false, "")
@@ -180,7 +184,7 @@ func main() {
 			case err := <-errs:
 				fmt.Fprintf(os.Stderr, "error: %s\n", err)
 			case <-done:
-				break
+				return
 			}
 		}
 	}()
@@ -232,6 +236,33 @@ func main() {
 				modeFn(opts, filename, source, output, errs)
 			}
 		}()
+	}
+
+	// If we're reading JS source straight from stdin, throw
+	// it into a temp file that we'll clean up later
+	if opts.rawInput {
+		tmpfile, err := os.CreateTemp("", "jsluice-raw-input")
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp file for raw input: %s\n", err)
+			os.Exit(3)
+		}
+		defer os.Remove(tmpfile.Name())
+
+		_, err = io.Copy(tmpfile, os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write raw input to temp file: %s\n", err)
+			os.Exit(3)
+		}
+
+		err = tmpfile.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close temp file: %s\n", err)
+			os.Exit(3)
+		}
+
+		// overwrite the files slice so we read only the raw input
+		files = []string{tmpfile.Name()}
 	}
 
 	// default to reading filenames from stdin, fall back
