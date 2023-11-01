@@ -44,11 +44,8 @@ func awsMatcher() SecretMatcher {
 			return nil
 		}
 
-		data := struct {
-			Key    string `json:"key"`
-			Secret string `json:"secret,omitempty"`
-		}{
-			Key: str,
+		data := map[string]string{
+			"key": str,
 		}
 
 		match := &Secret{
@@ -77,13 +74,13 @@ func awsMatcher() SecretMatcher {
 			if strings.Contains(k, "secret") {
 				// TODO: check format of value
 				// TODO: think of a way to handle multiple secrets in the same object?
-				data.Secret = DecodeString(o.GetStringI(k, ""))
+				data["secret"] = DecodeString(o.GetStringI(k, ""))
 				break
 			}
 		}
 
 		sev := SeverityLow
-		if data.Secret != "" {
+		if data["secret"] != "" {
 			sev = SeverityHigh
 		}
 		return &Secret{

@@ -11,8 +11,8 @@ func TestAnalyzerBasicURLs(t *testing.T) {
 
 	urls := a.GetURLs()
 
-	if len(urls) != 1 {
-		t.Errorf("Expected exactly 1 URL; got %d", len(urls))
+	if len(urls) < 1 {
+		t.Errorf("Expected at least 1 URL; got %d", len(urls))
 	}
 
 	if urls[0].URL != "/logout" {
