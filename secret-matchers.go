@@ -144,10 +144,8 @@ func AllSecretMatchers() []SecretMatcher {
 				return nil
 			}
 
-			data := struct {
-				Key string `json:"key"`
-			}{
-				Key: value.RawString(),
+			data := map[string]string{
+				"key": value.RawString(),
 			}
 
 			match := &Secret{

@@ -14,10 +14,8 @@ func githubKeyMatcher() SecretMatcher {
 			return nil
 		}
 
-		data := struct {
-			Key string `json:"key"`
-		}{
-			Key: str,
+		data := map[string]string{
+			"key": str,
 		}
 
 		match := &Secret{
