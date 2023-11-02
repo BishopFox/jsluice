@@ -19,7 +19,14 @@ func runQuery(opts options, filename string, source []byte, output chan string, 
 
 		for k, n := range qr {
 			vals[k] = n.Content()
-			if !opts.rawOutput {
+
+			switch {
+			case opts.format:
+				f, err := n.Format()
+				if err == nil {
+					vals[k] = f
+				}
+			case !opts.rawOutput:
 				vals[k] = n.AsGoType()
 			}
 		}

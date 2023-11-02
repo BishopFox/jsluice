@@ -46,6 +46,7 @@ of expressions like this are replaced with `EXPR` by default, but that can be ch
         * [Custom Secret Matchers](#custom-secret-matchers)
     * [Printing Syntax Trees](#printing-syntax-trees)
     * [Running Queries](#running-queries)
+    * [Formatting JavaScript Source](#formatting-javascript-source)
     * [Using remote files over HTTP](#requesting-files-from-remote-hosts)
     * [Using WARC files](#using-warc-files)
     * [Getting help](#help)
@@ -78,11 +79,12 @@ You can also provide files one-per-line on `stdin`:
 find . -name '*.js' | jsluice <mode> [options]
 ```
 
-`jsluice` has four modes:
+`jsluice` has five modes:
 * `urls` - for extracting URLs and paths
 * `secrets` - for finding secrets and so on
 * `tree` - for printing syntax trees
 * `query` - for running tree-sitter queries
+* `format` - for formatting JavaScript source
 
 Output is in [JSONL](https://jsonlines.org/) format. Piping `jsluice` to a tool
 like [jq](https://jqlang.github.io/jq/) allows for human-readable formatting,
@@ -411,6 +413,23 @@ as output:
 ```
 
 If you don't want that to happen, you can use the `-r`/`--raw-output` flag.
+
+### Formatting JavaScript Source
+
+The `format` mode uses [jsbeautifier-go](https://github.com/ditashi/jsbeautifier-go) to format JavaScript source code:
+
+```
+▶ cat testdata/location.min.js
+function goToLogin(){location.href="/login/"+document.location.hash.substring(1)} let logout=()=>{document.location.replace("/logout")}
+
+▶ jsluice format testdata/location.min.js
+function goToLogin() {
+    location.href = "/login/" + document.location.hash.substring(1)
+}
+let logout = () => {
+    document.location.replace("/logout")
+}
+```
 
 ### Requesting files from remote hosts:
 `jsluice` will detect when an argument is passed to the tool that begins with `http://` or `https://`. These arguments will be used to retrieve the associated files, and work on them in the same process as the local files.

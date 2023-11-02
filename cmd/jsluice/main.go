@@ -27,12 +27,13 @@ type options struct {
 	placeholder string
 	help        bool
 	warc        bool
-	unique      bool
+	rawInput    bool
 
 	// urls
 	includeSource bool
 	ignoreStrings bool
 	resolvePaths  string
+	unique        bool
 
 	// secrets
 	patternsFile string
@@ -41,6 +42,7 @@ type options struct {
 	query           string
 	rawOutput       bool
 	includeFilename bool
+	format          bool
 }
 
 const (
@@ -48,6 +50,7 @@ const (
 	modeSecrets = "secrets"
 	modeTree    = "tree"
 	modeQuery   = "query"
+	modeFormat  = "format"
 )
 
 type stringSlice []string
@@ -80,12 +83,14 @@ func init() {
 			"  secrets   Extract secrets and other interesting bits",
 			"  tree      Print syntax trees for input files",
 			"  query     Run tree-sitter a query against input files",
+			"  format    Format JavaScript source using jsbeautifier-go",
 			"",
 			"Global options:",
 			"  -c, --concurrency int        Number of files to process concurrently (default 1)",
 			"  -C, --cookie string          Cookies to use when making requests to the specified HTTP based arguments",
 			"  -H, --header string          Headers to use when making requests to the specified HTTP based arguments (can be specified multiple times)",
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
+			"  -j, --raw-input              Read raw JavaScript source from stdin",
 			"  -w, --warc                   Treat the input files as WARC (Web ARChive) files",
 			"",
 			"URLs mode:",
@@ -101,6 +106,7 @@ func init() {
 			"  -q, --query <query>          Tree sitter query to run; e.g. '(string) @matches'",
 			"  -r, --raw-output             Do not convert values to native types",
 			"  -f, --include-filename       Include the filename in the output",
+			"  -F, --format                 Format source code in the output",
 			"",
 			"Examples:",
 			"  jsluice urls -C 'auth=true; user=admin;' -H 'Specific-Header-One: true' -H 'Specific-Header-Two: false' local_file.js https://remote.host/example.js",
@@ -120,6 +126,7 @@ func main() {
 	flag.IntVarP(&opts.concurrency, "concurrency", "c", 1, "Number of files to process concurrently")
 	flag.StringVarP(&opts.cookie, "cookie", "C", "", "Cookie(s) to use when making HTTP requests")
 	flag.VarP(&headers, "header", "H", "Headers to use when making HTTP requests")
+	flag.BoolVarP(&opts.rawInput, "raw-input", "j", false, "Read raw JavaScript source from stdin")
 	flag.StringVarP(&opts.placeholder, "placeholder", "P", "EXPR", "Set the expression placeholder to a custom string")
 	flag.BoolVarP(&opts.help, "help", "h", false, "")
 	flag.BoolVarP(&opts.warc, "warc", "w", false, "")
@@ -137,6 +144,7 @@ func main() {
 	flag.StringVarP(&opts.query, "query", "q", "", "Tree sitter query to run; e.g. '(string) @matches'")
 	flag.BoolVarP(&opts.rawOutput, "raw-output", "r", false, "Do not convert values to native types")
 	flag.BoolVarP(&opts.includeFilename, "include-filename", "f", false, "Include the filename in the output")
+	flag.BoolVarP(&opts.format, "format", "F", false, "Format source code in the output")
 
 	flag.Parse()
 
@@ -179,7 +187,7 @@ func main() {
 			case err := <-errs:
 				fmt.Fprintf(os.Stderr, "error: %s\n", err)
 			case <-done:
-				break
+				return
 			}
 		}
 	}()
@@ -191,6 +199,7 @@ func main() {
 		modeSecrets: extractSecrets,
 		modeTree:    printTree,
 		modeQuery:   runQuery,
+		modeFormat:  format,
 	}
 
 	if _, exists := modes[mode]; !exists {
@@ -230,6 +239,33 @@ func main() {
 				modeFn(opts, filename, source, output, errs)
 			}
 		}()
+	}
+
+	// If we're reading JS source straight from stdin, throw
+	// it into a temp file that we'll clean up later
+	if opts.rawInput {
+		tmpfile, err := os.CreateTemp("", "jsluice-raw-input")
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp file for raw input: %s\n", err)
+			os.Exit(3)
+		}
+		defer os.Remove(tmpfile.Name())
+
+		_, err = io.Copy(tmpfile, os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write raw input to temp file: %s\n", err)
+			os.Exit(3)
+		}
+
+		err = tmpfile.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close temp file: %s\n", err)
+			os.Exit(3)
+		}
+
+		// overwrite the files slice so we read only the raw input
+		files = []string{tmpfile.Name()}
 	}
 
 	// default to reading filenames from stdin, fall back
