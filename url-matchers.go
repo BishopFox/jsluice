@@ -41,60 +41,61 @@ func (a *Analyzer) GetURLs() []*URL {
 				continue
 			}
 
-			match := matcher.Fn(n)
-			if match == nil {
-				continue
-			}
-
-			// decode any escapes in the URL
-			match.URL = DecodeString(match.URL)
-
-			// an empty slice is easier to deal with than null, e.g when using jq
-			if match.QueryParams == nil {
-				match.QueryParams = []string{}
-			}
-			if match.BodyParams == nil {
-				match.BodyParams = []string{}
-			}
-
-			// Filter out data: and tel: schemes etc
-			lower := strings.ToLower(match.URL)
-			if strings.HasPrefix(lower, "data:") ||
-				strings.HasPrefix(lower, "tel:") ||
-				strings.HasPrefix(lower, "about:") ||
-				strings.HasPrefix(lower, "javascript:") {
-				continue
-			}
-
-			// Look for URLs that are entirely made up of EXPR replacements
-			// and skip them. Maybe this should be optional? Maybe it should
-			// remove things like EXPR#EXPR etc too
-			letters := re.ReplaceAllString(match.URL, "")
-			if strings.ReplaceAll(letters, ExpressionPlaceholder, "") == "" {
-				continue
-			}
-
-			// Parse any query params out of the URL and add them. Some, but not
-			// all of the matchers will add query params, so we want to do it here
-			// and then remove duplicates
-			u, err := url.Parse(match.URL)
-			if err == nil {
-				// manually disallow www.w3.org just because it shows up so damn often
-				if u.Hostname() == "www.w3.org" {
+			for _, match := range matcher.Fn(n) {
+				if match == nil {
 					continue
 				}
 
-				for p, _ := range u.Query() {
-					// Ignore params that were expressions
-					if p == ExpressionPlaceholder {
+				// decode any escapes in the URL
+				match.URL = DecodeString(match.URL)
+
+				// an empty slice is easier to deal with than null, e.g when using jq
+				if match.QueryParams == nil {
+					match.QueryParams = []string{}
+				}
+				if match.BodyParams == nil {
+					match.BodyParams = []string{}
+				}
+
+				// Filter out data: and tel: schemes etc
+				lower := strings.ToLower(match.URL)
+				if strings.HasPrefix(lower, "data:") ||
+					strings.HasPrefix(lower, "tel:") ||
+					strings.HasPrefix(lower, "about:") ||
+					strings.HasPrefix(lower, "javascript:") {
+					continue
+				}
+
+				// Look for URLs that are entirely made up of EXPR replacements
+				// and skip them. Maybe this should be optional? Maybe it should
+				// remove things like EXPR#EXPR etc too
+				letters := re.ReplaceAllString(match.URL, "")
+				if strings.ReplaceAll(letters, ExpressionPlaceholder, "") == "" {
+					continue
+				}
+
+				// Parse any query params out of the URL and add them. Some, but not
+				// all of the matchers will add query params, so we want to do it here
+				// and then remove duplicates
+				u, err := url.Parse(match.URL)
+				if err == nil {
+					// manually disallow www.w3.org just because it shows up so damn often
+					if u.Hostname() == "www.w3.org" {
 						continue
 					}
-					match.QueryParams = append(match.QueryParams, p)
-				}
-			}
-			match.QueryParams = unique(match.QueryParams)
 
-			matches = append(matches, match)
+					for p, _ := range u.Query() {
+						// Ignore params that were expressions
+						if p == ExpressionPlaceholder {
+							continue
+						}
+						match.QueryParams = append(match.QueryParams, p)
+					}
+				}
+				match.QueryParams = unique(match.QueryParams)
+
+				matches = append(matches, match)
+			}
 		}
 	}
 
@@ -122,7 +123,22 @@ func unique[T comparable](items []T) []T {
 // and a function to actually do the matching and producing of the *URL
 type URLMatcher struct {
 	Type string
-	Fn   func(*Node) *URL
+	Fn   func(*Node) []*URL
+}
+
+func SingleURLMatcher(typ string, fn func(*Node) *URL) URLMatcher {
+	wrapperFn := func(n *Node) []*URL {
+		result := fn(n)
+		if result == nil {
+			return nil
+		}
+		return []*URL{result}
+	}
+	return URLMatcher{Type: typ, Fn: wrapperFn}
+}
+
+func MultiURLMatcher(typ string, fn func(*Node) []*URL) URLMatcher {
+	return URLMatcher{Type: typ, Fn: fn}
 }
 
 // AddURLMatcher allows custom URLMatchers to be added to the Analyzer
@@ -178,7 +194,7 @@ func AllURLMatchers() []URLMatcher {
 		matchJQuery(),
 
 		// location assignment
-		{"assignment_expression", func(n *Node) *URL {
+		SingleURLMatcher("assignment_expression", func(n *Node) *URL {
 			left := n.ChildByFieldName("left")
 			right := n.ChildByFieldName("right")
 
@@ -207,10 +223,10 @@ func AllURLMatchers() []URLMatcher {
 				Type:   "locationAssignment",
 				Source: n.Content(),
 			}
-		}},
+		}),
 
 		// location replacement
-		{"call_expression", func(n *Node) *URL {
+		SingleURLMatcher("call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 
 			if !strings.HasSuffix(callName, "location.replace") {
@@ -230,10 +246,10 @@ func AllURLMatchers() []URLMatcher {
 				Type:   "locationReplacement",
 				Source: n.Content(),
 			}
-		}},
+		}),
 
 		// window.open(url)
-		{"call_expression", func(n *Node) *URL {
+		SingleURLMatcher("call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 			if callName != "window.open" && callName != "open" {
 				return nil
@@ -252,10 +268,10 @@ func AllURLMatchers() []URLMatcher {
 				Source: n.Content(),
 			}
 			return nil
-		}},
+		}),
 
 		// fetch(url, [init])
-		{"call_expression", func(n *Node) *URL {
+		SingleURLMatcher("call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 			if callName != "fetch" {
 				return nil
@@ -278,10 +294,10 @@ func AllURLMatchers() []URLMatcher {
 				Source:      n.Content(),
 			}
 			return nil
-		}},
+		}),
 
 		// other function calls with a URL-like argument
-		{"call_expression", func(n *Node) *URL {
+		SingleURLMatcher("call_expression", func(n *Node) *URL {
 			callName := n.ChildByFieldName("function").Content()
 
 			arguments := n.ChildByFieldName("arguments")
@@ -298,14 +314,14 @@ func AllURLMatchers() []URLMatcher {
 				Type:   callName,
 				Source: n.Content(),
 			}
-		}},
+		}),
 
 		// string literals
 		// This should always go last because it's the matcher
 		// that provides the least amount of context. When doing
 		// de-duplication based on the path that means that a
 		// duplicate with more context would "win" if one exists
-		{"string", func(n *Node) *URL {
+		SingleURLMatcher("string", func(n *Node) *URL {
 			trimmed := n.RawString()
 
 			if !MaybeURL(trimmed) {
@@ -317,7 +333,7 @@ func AllURLMatchers() []URLMatcher {
 				Type:   "stringLiteral",
 				Source: n.Content(),
 			}
-		}},
+		}),
 	}
 
 	return matchers

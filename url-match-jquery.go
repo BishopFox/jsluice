@@ -8,7 +8,7 @@ import (
 
 func matchJQuery() URLMatcher {
 
-	return URLMatcher{"call_expression", func(n *Node) *URL {
+	return SingleURLMatcher("call_expression", func(n *Node) *URL {
 		callName := n.ChildByFieldName("function").Content()
 
 		if !slices.Contains(
@@ -127,5 +127,5 @@ func matchJQuery() URLMatcher {
 		}
 
 		return m
-	}}
+	})
 }
