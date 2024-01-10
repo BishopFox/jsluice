@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +29,7 @@ type options struct {
 	help        bool
 	warc        bool
 	rawInput    bool
+	certCheck   bool
 
 	// urls
 	includeSource bool
@@ -92,6 +94,7 @@ func init() {
 			"  -P, --placeholder string     Set the expression placeholder to a custom string (default 'EXPR')",
 			"  -j, --raw-input              Read raw JavaScript source from stdin",
 			"  -w, --warc                   Treat the input files as WARC (Web ARChive) files",
+			"  -i, --no-check-certificate	Ignore validation of server certificates",
 			"",
 			"URLs mode:",
 			"  -I, --ignore-strings         Ignore matches from string literals",
@@ -130,6 +133,7 @@ func main() {
 	flag.StringVarP(&opts.placeholder, "placeholder", "P", "EXPR", "Set the expression placeholder to a custom string")
 	flag.BoolVarP(&opts.help, "help", "h", false, "")
 	flag.BoolVarP(&opts.warc, "warc", "w", false, "")
+	flag.BoolVarP(&opts.certCheck, "no-check-certificate", "i", false, "Ignore validation of server certificates")
 
 	// url options
 	flag.BoolVarP(&opts.includeSource, "include-source", "S", false, "Include the source code where the URL was found")
@@ -230,7 +234,7 @@ func main() {
 					continue
 				}
 
-				source, err := readFromFileOrURL(filename, opts.cookie, opts.headers)
+				source, err := readFromFileOrURL(filename, opts.cookie, opts.headers, opts.certCheck)
 				if err != nil {
 					errs <- err
 					continue
@@ -288,9 +292,13 @@ func main() {
 
 }
 
-func readFromFileOrURL(path string, cookie string, headers []string) ([]byte, error) {
+func readFromFileOrURL(path string, cookie string, headers []string, ignoreCert bool) ([]byte, error) {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		client := &http.Client{}
+
+		if ignoreCert {
+			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		}
 
 		req, err := http.NewRequest("GET", path, nil)
 		if err != nil {
